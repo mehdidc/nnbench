@@ -66,3 +66,26 @@ def vgg(hp, input_shape=(3, 227, 227), nb_outputs=10):
     x = Dense(nb_outputs, activation='softmax')(x)
     out = x
     return Model(inp, out)
+
+
+def nin(hp, input_shape=(3, 227, 227), nb_outputs=10):
+    activation = hp['activation']
+
+    inp = Input(shape=input_shape)
+    x = inp
+    x = Convolution2D(64, 5, 5, activation=activation)(x)
+    x = Convolution2D(64, 1, 1, activation=activation)(x)
+    x = Convolution2D(64, 1, 1, activation=activation)(x)
+    x = MaxPooling2D((2, 2))(x)
+    x = Dropout(0.5)(x)
+    x = Convolution2D(128, 5, 5, activation=activation)(x)
+    x = Convolution2D(128, 1, 1, activation=activation)(x)
+    x = Convolution2D(128, 1, 1, activation=activation)(x)
+    x = MaxPooling2D((2, 2))(x)
+    x = Dropout(0.5)(x)
+    x = Convolution2D(256, 5, 5, activation=activation)(x)
+    x = Convolution2D(256, 1, 1, activation=activation)(x)
+    x = Convolution2D(nb_outputs, 1, 1, activation=activation)(x)
+    x = Flatten()(x)
+    out = x
+    return Model(inp, out)

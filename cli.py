@@ -3,6 +3,7 @@ from data import load_data
 
 from keras import optimizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.preprocessing.image import ImageDataGenerator
 
 import models
 
@@ -37,7 +38,12 @@ def train_model(params):
     valid_ratio = data_params['valid_ratio']
     dataset_name = data_params['name']
     data_preparation_random_state = data_params['prep_random_state']
-    use_horiz_flip = data_params['horiz_flip']
+    augmentation = data_params['augmentation']
+    use_horiz_flip = augmentation['horiz_flip']
+    use_vert_flip = augmentation['vert_flip']
+    shear_range = augmentation['shear_range']
+    zoom_range = augmentation['zoom_range']
+    rotation_range = augmentation['rotation_range']
 
     batch_size = optim_params['batch_size']
     pred_batch_size = optim_params['pred_batch_size']
@@ -116,9 +122,19 @@ def train_model(params):
     ]
 
     train_flow = train_iterator.flow(repeat=True, batch_size=batch_size)
+    data_augment = ImageDataGenerator(
+        rotation_range=rotation_range,
+        shear_range=shear_range,
+        zoom_range=zoom_range,
+        horizontal_flip=use_horiz_flip,
+        vertical_flip=use_vert_flip)
+
+    def augment(X, y, rng):
+        for X_, y_ in data_augment.flow(X, y, batch_size=X.shape[0]):
+            return X_, y_
+
     transformers = []
-    if use_horiz_flip:
-        transformers.append(horiz_flip)
+    transformers.append(augment)
     train_flow = apply_transformers(train_flow, transformers, rng=np.random)
     try:
         model.fit_generator(

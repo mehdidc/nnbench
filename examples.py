@@ -1,19 +1,19 @@
 default_optim = {
     'algo': 'SGD',
-    'algo_params': {'lr': 0.1, 'momentum': 0.9, 'decay': 1e-6},
+    'algo_params': {'lr': 0.01, 'momentum': 0.95},
     'patience': 50,
+    'patience_loss': 'val_acc',
     'nb_epoch': 1000,
     'batch_size': 128,
     'pred_batch_size': 1000,
-    'patience_loss': 'val_acc',
     'lr_schedule': {
         'type': 'decrease_when_stop_improving',
-        'loss': 'train_acc',
-        'shrink_factor': 10,
-        'patience': 1,
+        'loss': 'val_acc',
+        'shrink_factor': 2,
+        'patience': 10,
         'min_lr': 0.00001
     },
-    'budget_secs': '10'
+    'budget_secs': 'inf'
 }
 small_test_cnn = {
     'model': {
@@ -42,20 +42,22 @@ small_test_fc = small_test_cnn.copy()
 small_test_fc['model'] = {
     'name': 'fc',
     'params': {
-        'nb_hidden': [500, 500, 500],
+        'nb_hidden': [500, 500],
         'activation': 'relu',
     }
 }
 
-small_test = small_test_fc
+small_test = small_test_cnn.copy()
+small_test['optim']['budget_secs'] = 60 * 100
 
 
 def random_data(rng):
-    datasets = ('mnist', 'cifar')
+    datasets = ('mnist', 'cifar10')
     return {'shuffle': True,
             'name': rng.choice(datasets),
             'prep_random_state': 1,
-            'valid_ratio': None}
+            'valid_ratio': None,
+            'horiz_flip': True}
 
 
 def model_vgg_A():

@@ -119,6 +119,8 @@ class LearningRateScheduler(keras.callbacks.Callback):
         old_lr = float(model.optimizer.lr.get_value())
         if epoch == 0:
             new_lr = old_lr
+        elif self.type == 'constant':
+            new_lr = old_lr
         elif self.type == 'decrease_when_stop_improving':
             if epoch < self.patience:
                 new_lr = old_lr
@@ -132,7 +134,13 @@ class LearningRateScheduler(keras.callbacks.Callback):
                 arg_best = np.argmax if best == max else np.argmin
                 best_index = arg_best(hist[self.loss])
                 best_value = hist[self.loss][best_index]
-                if (best(value_epoch, best_value) == best_value and epoch - best_index + 1 >= self.patience):
+                if ( best(value_epoch, best_value) == best_value and
+                     epoch - best_index + 1 >= self.patience):
+                    print('shrinking learning rate, loss : {},'
+                          'prev best epoch : {}, prev best value : {},'
+                          'current value: {}'.format(self.loss,
+                                                     best_index + 1, best_value,
+                                                     value_epoch))
                     new_lr = old_lr / self.shrink_factor
                 else:
                     new_lr = old_lr
