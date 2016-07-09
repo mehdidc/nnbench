@@ -37,6 +37,31 @@ class BatchIterator(object):
                 break
 
 
+def apply_transformers(iterator, transformers, rng=np.random):
+    for X, y in iterator:
+        for t in transformers:
+            X, y = t(X, y, rng=rng)
+        yield X, y
+
+
+def horiz_flip(X, y, rng=np.random):
+    X_ = np.concatenate((X, X[:, :, :, ::-1]), axis=0)
+    y_ = np.concatenate((y, y), axis=0)
+    indices = np.arange(0, X_.shape[0])
+    rng.shuffle(indices)
+    indices = indices[0:len(X)]
+    return X_[indices], y_[indices]
+
+
+def vert_flip(X, y, rng=np.random):
+    X_ = np.concatenate((X, X[:, :, ::-1, :]), axis=0)
+    y_ = np.concatenate((y, y), axis=0)
+    indices = np.arange(0, X_.shape[0])
+    rng.shuffle(indices)
+    indices = indices[0:len(X)]
+    return X_[indices], y_[indices]
+
+
 def input_only(gen):
 
     def gen_():
@@ -70,6 +95,8 @@ class RecordEachEpoch(keras.callbacks.Callback):
         logs[self.name] = self.compute_fn()
         self.values.append(self.name)
 
+eps = 1e-10
+
 
 class LearningRateScheduler(keras.callbacks.Callback):
     def __init__(self,
@@ -96,28 +123,23 @@ class LearningRateScheduler(keras.callbacks.Callback):
             if epoch < self.patience:
                 new_lr = old_lr
             else:
-                value_epoch = logs[self.loss]
                 hist = model.history.history
-                value_epoch_past = hist[self.loss][epoch - self.patience]
-                if self.mode == 'min':
-                    cond = value_epoch <= value_epoch_past
-                elif self.mode == 'max':
-                    cond = value_epoch >= value_epoch_past
-                elif self.mode == 'auto':
-                    if 'acc' in self.loss:
-                        cond = cond = value_epoch >= value_epoch_past
-                    else:
-                        cond = cond = value_epoch >= value_epoch_past
+                value_epoch = logs[self.loss]
+                if self.mode == 'auto':
+                    best = max if 'acc' in self.loss else min
                 else:
-                    cond = value_epoch >= value_epoch_past
-                if not cond:
+                    best = {'max': max, 'min': min}[self.mode]
+                arg_best = np.argmax if best == max else np.argmin
+                best_index = arg_best(hist[self.loss])
+                best_value = hist[self.loss][best_index]
+                if (best(value_epoch, best_value) == best_value and epoch - best_index + 1 >= self.patience):
                     new_lr = old_lr / self.shrink_factor
                 else:
                     new_lr = old_lr
         else:
             raise Exception('Unknown lr schedule : {}'.format(self.type))
         new_lr = max(new_lr, self.min_lr)
-        if new_lr != old_lr:
+        if abs(new_lr - old_lr) > eps:
             print('prev learning rate : {}, '
                   'new learning rate : {}'.format(old_lr, new_lr))
         K.set_value(self.model.optimizer.lr, new_lr)

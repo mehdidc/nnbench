@@ -6,11 +6,13 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint
 
 import models
 
-from helpers import compute_metric, RecordEachEpoch, LearningRateScheduler, Show
+from helpers import (
+    compute_metric, RecordEachEpoch, LearningRateScheduler,
+    Show, horiz_flip,
+    apply_transformers)
 
 import numpy as np
 from tempfile import NamedTemporaryFile
-import time
 
 import examples
 
@@ -35,6 +37,7 @@ def train_model(params):
     valid_ratio = data_params['valid_ratio']
     dataset_name = data_params['name']
     data_preparation_random_state = data_params['prep_random_state']
+    use_horiz_flip = data_params['horiz_flip']
 
     batch_size = optim_params['batch_size']
     pred_batch_size = optim_params['pred_batch_size']
@@ -109,8 +112,14 @@ def train_model(params):
                               min_lr=min_lr),
         Show()
     ]
+
+    train_flow = train_iterator.flow(repeat=True, batch_size=batch_size)
+    transformers = []
+    if use_horiz_flip:
+        transformers.append(horiz_flip)
+    train_flow = apply_transformers(train_flow, transformers, rng=np.random)
     hist = model.fit_generator(
-        train_iterator.flow(repeat=True, batch_size=batch_size),
+        train_flow,
         nb_epoch=nb_epoch,
         samples_per_epoch=info['nb_train_samples'],
         callbacks=callbacks,

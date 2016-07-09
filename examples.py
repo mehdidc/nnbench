@@ -1,6 +1,6 @@
 default_optim = {
     'algo': 'SGD',
-    'algo_params': {'lr': 0.01, 'momentum': 0.9, 'decay': 1e-6},
+    'algo_params': {'lr': 0.1, 'momentum': 0.9, 'decay': 1e-6},
     'patience': 50,
     'nb_epoch': 1000,
     'batch_size': 128,
@@ -8,7 +8,7 @@ default_optim = {
     'patience_loss': 'val_acc',
     'lr_schedule': {
         'type': 'decrease_when_stop_improving',
-        'loss': 'val_acc',
+        'loss': 'train_acc',
         'shrink_factor': 10,
         'patience': 1,
         'min_lr': 0.00001
@@ -32,7 +32,8 @@ small_test_cnn = {
         'shuffle': True,
         'name': 'cifar10',
         'prep_random_state': 1,
-        'valid_ratio': None
+        'valid_ratio': None,
+        'horiz_flip': True
     }
 }
 
