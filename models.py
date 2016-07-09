@@ -47,6 +47,7 @@ def vgg(hp, input_shape=(3, 227, 227), nb_outputs=10):
     size_blocks : list
     activation : str
     fc : list
+    fc_dropout : float
     """
     inp, out = vgg_partial_(
         nb_filters=hp['nb_filters'],
@@ -58,8 +59,11 @@ def vgg(hp, input_shape=(3, 227, 227), nb_outputs=10):
     )
     x = out
     x = Flatten()(x)
+    pr = hp['fc_dropout']
     for nb_units in hp['fc']:
         x = Dense(nb_units, activation=hp['activation'])(x)
+        if pr > 0:
+            x = Dropout(pr)(x)
     x = Dense(nb_outputs, activation='softmax')(x)
     out = x
     return Model(inp, out)

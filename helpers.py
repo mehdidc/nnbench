@@ -1,5 +1,6 @@
 import numpy as np
 import keras
+from keras import backend as K
 
 
 def floatX(X):
@@ -68,3 +69,63 @@ class RecordEachEpoch(keras.callbacks.Callback):
     def on_epoch_end(self, batch, logs={}):
         logs[self.name] = self.compute_fn()
         self.values.append(self.name)
+
+
+class LearningRateScheduler(keras.callbacks.Callback):
+    def __init__(self,
+                 type_='decrease_when_stop_improving',
+                 shrink_factor=10, loss='train_acc', mode='max',
+                 patience=1,
+                 min_lr=0.00001):
+        super(LearningRateScheduler, self).__init__()
+        self.type = type_
+        self.shrink_factor = shrink_factor
+        self.loss = loss
+        self.mode = mode
+        self.patience = patience
+        self.min_lr = min_lr
+
+    def on_epoch_end(self, epoch, logs={}):
+        assert hasattr(self.model.optimizer, 'lr'), \
+            'Optimizer must have a "lr" attribute.'
+        model = self.model
+        old_lr = float(model.optimizer.lr.get_value())
+        if epoch == 0:
+            new_lr = old_lr
+        elif self.type == 'decrease_when_stop_improving':
+            if epoch < self.patience:
+                new_lr = old_lr
+            else:
+                value_epoch = logs[self.loss]
+                hist = model.history.history
+                value_epoch_past = hist[self.loss][epoch - self.patience]
+                if self.mode == 'min':
+                    cond = value_epoch <= value_epoch_past
+                elif self.mode == 'max':
+                    cond = value_epoch >= value_epoch_past
+                elif self.mode == 'auto':
+                    if 'acc' in self.loss:
+                        cond = cond = value_epoch >= value_epoch_past
+                    else:
+                        cond = cond = value_epoch >= value_epoch_past
+                else:
+                    cond = value_epoch >= value_epoch_past
+                if not cond:
+                    new_lr = old_lr / self.shrink_factor
+                else:
+                    new_lr = old_lr
+        else:
+            raise Exception('Unknown lr schedule : {}'.format(self.type))
+        new_lr = max(new_lr, self.min_lr)
+        if new_lr != old_lr:
+            print('prev learning rate : {}, '
+                  'new learning rate : {}'.format(old_lr, new_lr))
+        K.set_value(self.model.optimizer.lr, new_lr)
+
+
+class Show(keras.callbacks.Callback):
+
+    def on_epoch_end(self, epoch, logs={}):
+        print('')
+        print(logs)
+        print('')

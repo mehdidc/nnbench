@@ -2,14 +2,16 @@ import click
 from data import load_data
 
 from keras import optimizers
-from keras.callbacks import EarlyStopping, ModelCheckpoint, LearningRateScheduler
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 
 import models
 
-from helpers import compute_metric, RecordEachEpoch
+from helpers import compute_metric, RecordEachEpoch, LearningRateScheduler, Show
 
 import numpy as np
 from tempfile import NamedTemporaryFile
+
+import examples
 
 
 @click.group()
@@ -20,45 +22,7 @@ def main():
 @click.command()
 def smalltest():
     np.random.seed(1)
-    model_params = {
-        'name': 'vgg',
-        'params': {
-            'nb_filters': [64, 64],
-            'size_filters': 3,
-            'stride': 2,
-            'size_blocks': [2, 2],
-            'fc': [200],
-            'activation': 'relu'
-        }
-    }
-    optim_params = {
-        'algo': 'SGD',
-        'algo_params': {'lr': 0.01, 'momentum': 0.9},
-        'patience': 5,
-        'nb_epoch': 10,
-        'batch_size': 128,
-        'pred_batch_size': 1000,
-        'patience_loss': 'val_acc',
-        'lr_schedule': {
-            'type': 'decrease_when_stop_improving',
-            'loss': 'train_acc',
-            'shrink_factor': 10,
-            'patience': 1,
-            'min_lr': 0.00001
-        }
-    }
-    data_params = {
-        'shuffle': True,
-        'name': 'mnist',
-        'prep_random_state': 1,
-        'valid_ratio': None
-    }
-    params = {
-        'optim': optim_params,
-        'data': data_params,
-        'model': model_params
-    }
-    model, hist = train_model(params)
+    model, hist = train_model(examples.small_test)
 
 
 def train_model(params):
@@ -105,7 +69,8 @@ def train_model(params):
     optimizer = get_optimizer(algo)
     optimizer = optimizer(**algo_params)
     model.compile(loss='categorical_crossentropy',
-                  optimizer=optimizer)
+                  optimizer=optimizer,
+                  metrics=['accuracy'])
 
     def compute_train_accuracy():
         train_acc = compute_metric(
@@ -113,7 +78,6 @@ def train_model(params):
             train_iterator.flow(repeat=False, batch_size=pred_batch_size),
             metric='accuracy'
         )
-        print('\ntrain acc : {}'.format(train_acc))
         return train_acc
 
     def compute_valid_accuracy():
@@ -122,30 +86,7 @@ def train_model(params):
             valid_iterator.flow(repeat=False, batch_size=pred_batch_size),
             metric='accuracy'
         )
-        print('val acc : {}'.format(val_acc))
         return val_acc
-
-    def lr_scheduler(epoch):
-        print(epoch)
-        if epoch == 0:
-            return float(model.optimizer.lr.get_value())
-        if lr_schedule_type == 'decrease_when_stop_improving':
-            old_lr = float(model.optimizer.lr.get_value())
-            if epoch < lr_schedule_patience:
-                new_lr = old_lr
-            else:
-                print(len(model.history[lr_schedule_loss]))
-                value_epoch = model.history.history[lr_schedule_loss][epoch]
-                value_epoch_past = model.history.history[lr_schedule_loss][epoch - lr_schedule_patience]
-                if value_epoch >= value_epoch_past:
-                    new_lr = old_lr / lr_schedule_shrink_factor
-                    print('prev learning rate : {}, new learning rate : {}'.format(old_lr, new_lr))
-                else:
-                    new_lr = model.lr.get_value()
-        else:
-            raise Exception('Unknown lr schedule : {}'.format(lr_schedule_type))
-        new_lr = max(new_lr, min_lr)
-        return new_lr
 
     record_callbacks = [
         RecordEachEpoch(name='train_acc', compute_fn=compute_train_accuracy),
@@ -160,13 +101,20 @@ def train_model(params):
         ModelCheckpoint(model_filename, monitor=patience_loss,
                         verbose=1,
                         save_best_only=True, mode='auto'),
-        LearningRateScheduler(lr_scheduler),
+        LearningRateScheduler(type_=lr_schedule_type,
+                              shrink_factor=lr_schedule_shrink_factor,
+                              loss=lr_schedule_loss,
+                              patience=lr_schedule_patience,
+                              mode='auto',
+                              min_lr=min_lr),
+        Show()
     ]
     hist = model.fit_generator(
         train_iterator.flow(repeat=True, batch_size=batch_size),
         nb_epoch=nb_epoch,
         samples_per_epoch=info['nb_train_samples'],
-        callbacks=callbacks)
+        callbacks=callbacks,
+        verbose=2)
     model.load_weights(model_filename)
     test_acc = compute_metric(
         model,
