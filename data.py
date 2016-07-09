@@ -12,7 +12,8 @@ def load_data(name, batch_size=128,
               random_state=None):
     """
     if valid_ratio is None,
-    take a good default, depending on dataset based on what people do in papers
+    take a good default, depending on dataset, and
+    based on what people do in papers
     """
 
     info = {}
@@ -26,7 +27,8 @@ def load_data(name, batch_size=128,
         if valid_ratio is not None:
             train_X, valid_X, train_y, valid_y = train_test_split(
                 train_X_full, train_y_full,
-                test_size=valid_ratio)
+                test_size=valid_ratio,
+                random_state=random_state)
         else:
             rng = np.random.RandomState(random_state)
             indices = np.arange(train_X_full.shape[0])
