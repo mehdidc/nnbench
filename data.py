@@ -6,7 +6,7 @@ from keras.utils import np_utils
 from datakit.mnist import MNIST
 
 
-def load_data(name, batch_size=128,
+def load_data(name,
               shuffle=True,
               valid_ratio=None,
               random_state=None):
@@ -45,15 +45,12 @@ def load_data(name, batch_size=128,
         test_y = np_utils.to_categorical(data.y)
 
         train_iterator = BatchIterator(train_X, train_y,
-                                       batch_size=batch_size,
                                        shuffle=shuffle,
                                        random_state=random_state)
         valid_iterator = BatchIterator(valid_X, valid_y,
-                                       batch_size=batch_size,
                                        shuffle=False,
                                        random_state=random_state)
         test_iterator = BatchIterator(test_X, test_y,
-                                      batch_size=batch_size,
                                       shuffle=False)
         info['nb_train_samples'] = train_X.shape[0]
         info['nb_valid_samples'] = valid_X.shape[0]

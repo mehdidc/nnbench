@@ -8,27 +8,26 @@ def floatX(X):
 
 class BatchIterator(object):
 
-    def __init__(self, inputs, targets=None, batch_size=128,
+    def __init__(self, inputs, targets=None,
                  shuffle=False, random_state=None):
         self.inputs = inputs
         self.targets = targets
-        self.batch_size = batch_size
         self.shuffle = shuffle
         self.random_state = random_state
         self.rng = np.random.RandomState(random_state)
         if targets is not None:
             assert len(inputs) == len(targets)
 
-    def flow(self, repeat=True):
+    def flow(self, batch_size=128, repeat=True):
         while True:
             if self.shuffle:
                 indices = np.arange(len(self.inputs))
                 self.rng.shuffle(indices)
-            for start_idx in range(0, len(self.inputs), self.batch_size):
+            for start_idx in range(0, len(self.inputs), batch_size):
                 if self.shuffle:
-                    excerpt = indices[start_idx:start_idx + self.batch_size]
+                    excerpt = indices[start_idx:start_idx + batch_size]
                 else:
-                    excerpt = slice(start_idx, start_idx + self.batch_size)
+                    excerpt = slice(start_idx, start_idx + batch_size)
                 if self.targets is not None:
                     yield self.inputs[excerpt], self.targets[excerpt]
                 else:
