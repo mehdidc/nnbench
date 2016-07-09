@@ -8,6 +8,8 @@ import models
 
 from helpers import compute_metric, RecordEachEpoch
 
+from tempfile import NamedTemporaryFile
+
 
 @click.group()
 def main():
@@ -25,7 +27,7 @@ def train(dataset):
                 optim_params={'algo': 'SGD',
                               'algo_params': {},
                               'patience': 5,
-                              'nb_epoch': 10,
+                              'nb_epoch': 100,
                               'batch_size': 128})
 
 
@@ -65,25 +67,27 @@ def train_model(dataset, model,
             valid_iterator.flow(repeat=False),
             metric='accuracy'
         )
-        print('valid acc : {}'.format(val_acc))
         return val_acc
 
     record_callbacks = [
         RecordEachEpoch(name='val_acc', compute_fn=compute_valid_accuracy)
     ]
-
+    model_filename = NamedTemporaryFile(delete=False).name
     callbacks = record_callbacks + [
         EarlyStopping(monitor='val_acc',
                       patience=optim_params['patience'],
                       verbose=1,
-                      mode='auto')
+                      mode='auto'),
+        ModelCheckpoint(model_filename, monitor='val_acc',
+                        verbose=1,
+                        save_best_only=True, mode='auto')
     ]
     model.fit_generator(
         train_iterator.flow(repeat=True),
         nb_epoch=optim_params['nb_epoch'],
         samples_per_epoch=info['nb_train_samples'],
         callbacks=callbacks)
-
+    model.load_weights(model_filename)
     test_acc = compute_metric(
         model,
         test_iterator.flow(repeat=False),
