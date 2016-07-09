@@ -127,5 +127,6 @@ class Show(keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs={}):
         print('')
-        print(logs)
+        for k, v in logs.items():
+            print('{}:{:.5f}'.format(k, v))
         print('')

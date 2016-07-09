@@ -10,6 +10,7 @@ from helpers import compute_metric, RecordEachEpoch, LearningRateScheduler, Show
 
 import numpy as np
 from tempfile import NamedTemporaryFile
+import time
 
 import examples
 
@@ -69,8 +70,7 @@ def train_model(params):
     optimizer = get_optimizer(algo)
     optimizer = optimizer(**algo_params)
     model.compile(loss='categorical_crossentropy',
-                  optimizer=optimizer,
-                  metrics=['accuracy'])
+                  optimizer=optimizer)
 
     def compute_train_accuracy():
         train_acc = compute_metric(
@@ -120,7 +120,8 @@ def train_model(params):
         model,
         test_iterator.flow(repeat=False, batch_size=pred_batch_size),
         metric='accuracy')
-    print(test_acc)
+    hist.test_acc = test_acc
+    print('test acc : {}'.format(test_acc))
     return model, hist
 
 
