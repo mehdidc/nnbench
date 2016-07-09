@@ -12,7 +12,8 @@ default_optim = {
         'shrink_factor': 10,
         'patience': 1,
         'min_lr': 0.00001
-    }
+    },
+    'budget_secs': '10'
 }
 small_test_cnn = {
     'model': {

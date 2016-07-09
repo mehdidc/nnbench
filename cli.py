@@ -9,7 +9,7 @@ import models
 from helpers import (
     compute_metric, RecordEachEpoch, LearningRateScheduler,
     Show, horiz_flip,
-    apply_transformers)
+    apply_transformers, TimeBudget, BudgetFinishedException)
 
 import numpy as np
 from tempfile import NamedTemporaryFile
@@ -25,7 +25,7 @@ def main():
 @click.command()
 def smalltest():
     np.random.seed(1)
-    model, hist = train_model(examples.small_test)
+    model = train_model(examples.small_test)
 
 
 def train_model(params):
@@ -52,6 +52,7 @@ def train_model(params):
     lr_schedule_loss = lr_schedule['loss']
     lr_schedule_patience = lr_schedule['patience']
     min_lr = lr_schedule['min_lr']
+    budget_secs = float(optim_params['budget_secs'])
 
     model_name = model_params['name']
     model_params_ = model_params['params']
@@ -110,7 +111,8 @@ def train_model(params):
                               patience=lr_schedule_patience,
                               mode='auto',
                               min_lr=min_lr),
-        Show()
+        Show(),
+        TimeBudget(budget_secs)
     ]
 
     train_flow = train_iterator.flow(repeat=True, batch_size=batch_size)
@@ -118,20 +120,24 @@ def train_model(params):
     if use_horiz_flip:
         transformers.append(horiz_flip)
     train_flow = apply_transformers(train_flow, transformers, rng=np.random)
-    hist = model.fit_generator(
-        train_flow,
-        nb_epoch=nb_epoch,
-        samples_per_epoch=info['nb_train_samples'],
-        callbacks=callbacks,
-        verbose=2)
+    try:
+        model.fit_generator(
+            train_flow,
+            nb_epoch=nb_epoch,
+            samples_per_epoch=info['nb_train_samples'],
+            callbacks=callbacks,
+            verbose=2)
+    except BudgetFinishedException:
+        pass
+
     model.load_weights(model_filename)
     test_acc = compute_metric(
         model,
         test_iterator.flow(repeat=False, batch_size=pred_batch_size),
         metric='accuracy')
-    hist.test_acc = test_acc
+    model.history.test_acc = test_acc
     print('test acc : {}'.format(test_acc))
-    return model, hist
+    return model
 
 
 def get_optimizer(name):

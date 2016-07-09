@@ -1,7 +1,7 @@
 import numpy as np
 import keras
 from keras import backend as K
-
+import time
 
 def floatX(X):
     return X.astype('float32')
@@ -152,3 +152,19 @@ class Show(keras.callbacks.Callback):
         for k, v in logs.items():
             print('{}:{:.5f}'.format(k, v))
         print('')
+
+
+class BudgetFinishedException(Exception):
+    pass
+
+
+class TimeBudget(keras.callbacks.Callback):
+
+    def __init__(self, budget_secs=float('inf')):
+        self.start = time.time()
+        self.budget_secs = budget_secs
+
+    def on_epoch_end(self, epoch, logs={}):
+        t = time.time()
+        if t - self.start >= self.budget_secs:
+            raise BudgetFinishedException()
