@@ -3,7 +3,7 @@ from copy import deepcopy
 default_optim = {
     'algo': 'SGD',
     'algo_params': {'lr': 0.01, 'momentum': 0.95},
-    'patience': 50,
+    'patience': 1000,
     'patience_loss': 'val_acc',
     'nb_epoch': 1000,
     'batch_size': 128,
@@ -130,7 +130,7 @@ def model_vgg_D(fc=[4096, 4096]):
 def random_model_vgg(rng):
     stride = 2
     size_filters = rng.choice((2, 3))
-    nb_blocks = rng.randint(2, 5)
+    nb_blocks = rng.randint(1, 4)
     size_blocks = []
     nb_filters = []
     for i in range(nb_blocks):
@@ -182,6 +182,6 @@ def mini_random(rng):
 def micro_random(rng):
     optim = random_optim(rng)
     model = random_model(rng)
-    data = random_data(rng)
+    data = random_data(rng, datasets=('cifar10',))
     optim['budget_secs'] = 60 * 15
     return {'optim': optim, 'model': model, 'data': data}

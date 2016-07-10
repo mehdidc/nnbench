@@ -15,15 +15,16 @@ def main():
 @click.command()
 @click.option('--nb', default=1, required=False)
 @click.option('--where', default='', required=False)
-@click.option('--id', default='', required=False)
+@click.option('--job_id', default='', required=False)
 @click.option('--budget-hours', default=None, required=False)
-def run(nb, where, id, budget_hours):
+def run(nb, where, job_id, budget_hours):
     db = load_db()
     kw = {}
-    if where:
+    if where != '':
         kw['where'] = where
-    if id:
-        kw['summary'] = id
+    if job_id != '':
+        kw['summary'] = job_id
+    print(kw)
     jobs = list(db.jobs_with(state=AVAILABLE, **kw))
     jobs = jobs[0:nb]
     for job in jobs:
@@ -46,7 +47,8 @@ def insert(where, nb):
     params_generator = getattr(examples, where)
     for i in range(nb):
         params = params_generator(np.random)
-        db.add_job(params, where=where)
+        print(params)
+        db.safe_add_job(params, where=where)
 
 
 @click.command()
@@ -56,7 +58,7 @@ def smalltest():
 
 def train_and_save(db, job):
     output = train_and_get_results(job['content'])
-    db.job_update(job['summary'], {'results': output})
+    db.update({'results': output}, job['summary'])
 
 
 def train_and_get_results(params):
