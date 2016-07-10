@@ -2,6 +2,8 @@ import numpy as np
 import keras
 from keras import backend as K
 import time
+from keras.layers.advanced_activations import LeakyReLU
+
 
 def floatX(X):
     return X.astype('float32')
@@ -176,3 +178,5 @@ class TimeBudget(keras.callbacks.Callback):
         t = time.time()
         if t - self.start >= self.budget_secs:
             raise BudgetFinishedException()
+
+leaky_relu = LeakyReLU(0.3)

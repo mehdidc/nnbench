@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 default_optim = {
     'algo': 'SGD',
     'algo_params': {'lr': 0.01, 'momentum': 0.95},
@@ -6,6 +8,8 @@ default_optim = {
     'nb_epoch': 1000,
     'batch_size': 128,
     'pred_batch_size': 1000,
+    'l2': 0,
+    'l1': 0,
     'lr_schedule': {
         'type': 'decrease_when_stop_improving',
         'loss': 'val_acc',
@@ -13,6 +17,7 @@ default_optim = {
         'patience': 10,
         'min_lr': 0.00001
     },
+    'seed': 42,
     'budget_secs': 'inf'
 }
 small_test_cnn = {
@@ -34,11 +39,17 @@ small_test_cnn = {
         'name': 'cifar10',
         'prep_random_state': 1,
         'valid_ratio': None,
-        'horiz_flip': True
+        'augmentation': {
+            'horiz_flip': True,
+            'vert_flip': False,
+            'shear_range': 0,
+            'rotation_range': 0,
+            'zoom_range': 0
+        }
     }
 }
 
-small_test_fc = small_test_cnn.copy()
+small_test_fc = deepcopy(small_test_cnn)
 small_test_fc['model'] = {
     'name': 'fc',
     'params': {
@@ -47,17 +58,37 @@ small_test_fc['model'] = {
     }
 }
 
-small_test = small_test_cnn.copy()
+small_test = deepcopy(small_test_cnn)
 small_test['optim']['budget_secs'] = 60 * 100
 
 
-def random_data(rng):
-    datasets = ('mnist', 'cifar10')
+def random_optim(rng):
+    optim = deepcopy(default_optim)
+    algo = rng.choice(('Adam', 'RMSprop', 'SGD', 'Adadelta'))
+    optim['algo'] = algo
+
+    lr = rng.choice((0.1, 0.01, 0.05, 0.001, 0.005, 0.0001, 0.0005))
+    algo_params = {}
+    algo_params['lr'] = lr
+    if algo == 'SGD':
+        momentum = rng.choice((0.5, 0.9, 0.95, 0.99, 0))
+        nesterov = bool(rng.choice((True, False)))
+        algo_params.update({'momentum': momentum, 'nesterov': nesterov})
+    optim['algo_params'] = algo_params
+    return optim
+
+
+def random_data(rng, datasets=('mnist', 'cifar10')):
     return {'shuffle': True,
             'name': rng.choice(datasets),
             'prep_random_state': 1,
             'valid_ratio': None,
-            'horiz_flip': True}
+            'augmentation': {
+                'horiz_flip': True,
+                'vert_flip': False,
+                'shear_range': 0,
+                'rotation_range': 0,
+                'zoom_range': 0}}
 
 
 def model_vgg_A():
@@ -84,14 +115,14 @@ def model_vgg_B():
                 'activation': 'relu'}}
 
 
-def model_vgg_D():
+def model_vgg_D(fc=[4096, 4096]):
     return {'name': 'vgg',
             'params': {
                 'nb_filters': [64, 128, 256, 512, 512],
                 'size_blocks': [2, 2, 3, 3, 3],
                 'size_filters': 3,
                 'stride': 2,
-                'fc': [4096, 4096],
+                'fc': fc,
                 'fc_dropout': 0.5,
                 'activation': 'relu'}}
 
@@ -99,7 +130,7 @@ def model_vgg_D():
 def random_model_vgg(rng):
     stride = 2
     size_filters = rng.choice((2, 3))
-    nb_blocks = rng.randint(2, 6)
+    nb_blocks = rng.randint(2, 5)
     size_blocks = []
     nb_filters = []
     for i in range(nb_blocks):
@@ -124,3 +155,33 @@ def random_model_vgg(rng):
 
 def random_activation(rng):
     return rng.choice(('relu', 'leaky_relu'))
+
+
+def random_model(rng):
+    return random_model_vgg(rng)
+
+# real ones to use with where=
+
+
+def vgg_D_optim_cifar(rng):
+    optim = random_optim(rng)
+    fc = 512
+    model = model_vgg_D(fc=[fc, fc])
+    data = random_data(rng, datasets=('cifar10',))
+    return {'optim': optim, 'model': model, 'data': data}
+
+
+def mini_random(rng):
+    optim = random_optim(rng)
+    model = random_model(rng)
+    data = random_data(rng)
+    optim['budget_secs'] = 3600
+    return {'optim': optim, 'model': model, 'data': data}
+
+
+def micro_random(rng):
+    optim = random_optim(rng)
+    model = random_model(rng)
+    data = random_data(rng)
+    optim['budget_secs'] = 60 * 15
+    return {'optim': optim, 'model': model, 'data': data}
