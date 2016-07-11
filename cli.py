@@ -33,7 +33,8 @@ def run(nb, where, job_id, budget_hours):
     for job in jobs:
         print('running {}'.format(job['summary']))
         db.modify_state_of(job["summary"], RUNNING)
-        if budget_hours:
+        if budget_hours is not None:
+            budget_hours = int(budget_hours)
             job['content']['optim']['budget_secs'] = budget_hours * 3600
         print(job['content']['optim'])
         train_and_save(db, job)
