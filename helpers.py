@@ -4,6 +4,8 @@ from keras import backend as K
 import time
 from keras.layers.advanced_activations import LeakyReLU
 
+import json
+
 
 def floatX(X):
     return X.astype('float32')
@@ -153,6 +155,7 @@ class LearningRateScheduler(keras.callbacks.Callback):
             print('prev learning rate : {}, '
                   'new learning rate : {}'.format(old_lr, new_lr))
         K.set_value(self.model.optimizer.lr, new_lr)
+        logs['lr'] = new_lr
 
 
 class Show(keras.callbacks.Callback):
@@ -162,6 +165,34 @@ class Show(keras.callbacks.Callback):
         for k, v in logs.items():
             print('{}:{:.5f}'.format(k, v))
         print('')
+
+
+class LiveHistoryEpoch(keras.callbacks.Callback):
+
+    def __init__(self, filename):
+        self.filename = filename
+
+    def on_epoch_end(self, epoch, logs={}):
+        logs = {k: float(v) for k, v in logs.items()}
+        with open(self.filename, 'a') as fd:
+            fd.write(json.dumps(logs))
+            fd.write('\n')
+
+
+class LiveHistoryBatch(keras.callbacks.Callback):
+
+    def __init__(self, filename):
+        self.filename = filename
+
+    def on_epoch_end(self, epoch, logs={}):
+        with open(self.filename, 'a') as fd:
+            fd.write('\n')
+
+    def on_batch_end(self, epoch, logs={}):
+        logs = {k: float(v) for k, v in logs.items()}
+        with open(self.filename, 'a') as fd:
+            fd.write(json.dumps(logs))
+            fd.write('\n')
 
 
 class BudgetFinishedException(Exception):

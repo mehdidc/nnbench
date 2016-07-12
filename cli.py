@@ -5,6 +5,7 @@ from lightjob.cli import load_db
 from lightjob.db import AVAILABLE, PENDING, RUNNING, SUCCESS
 
 import numpy as np
+import os
 
 
 @click.group()
@@ -55,16 +56,18 @@ def insert(where, nb):
 
 @click.command()
 def smalltest():
-    train_model(examples.small_test)
+    train_model(examples.small_test, outdir='smalltest')
 
 
-def train_and_save(db, job):
-    output = train_and_get_results(job['content'])
+def train_and_save(db, job, outdir=None):
+    if outdir is None:
+        outdir = os.path.join('out', job['summary'])
+    output = train_and_get_results(job['content'], outdir=outdir)
     db.update({'results': output}, job['summary'])
 
 
-def train_and_get_results(params):
-    model = train_model(params)
+def train_and_get_results(params, outdir=None):
+    model = train_model(params, outdir=outdir)
     output = model.history.history.copy()
     output.update(model.history.final)
     return output

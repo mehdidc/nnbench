@@ -36,7 +36,7 @@ small_test_cnn = {
     'optim': default_optim,
     'data': {
         'shuffle': True,
-        'name': 'cifar10',
+        'name': 'mnist',
         'prep_random_state': 1,
         'valid_ratio': None,
         'augmentation': {
@@ -58,7 +58,7 @@ small_test_fc['model'] = {
     }
 }
 
-small_test = deepcopy(small_test_cnn)
+small_test = deepcopy(small_test_fc)
 small_test['optim']['budget_secs'] = 60 * 100
 
 
@@ -91,14 +91,14 @@ def random_data(rng, datasets=('mnist', 'cifar10')):
                 'zoom_range': 0}}
 
 
-def model_vgg_A():
+def model_vgg_A(fc=[4096, 4096]):
     return {'name': 'vgg',
             'params': {
                 'nb_filters': [64, 128, 256, 512, 512],
                 'size_blocks': [1, 1, 2, 2, 2],
                 'size_filters': 3,
                 'stride': 2,
-                'fc': [4096, 4096],
+                'fc': fc,
                 'fc_dropout': 0.5,
                 'activation': 'relu'}}
 
@@ -162,7 +162,6 @@ def random_model(rng):
 
 # real ones to use with where=
 
-
 def vgg_D_optim_cifar(rng):
     optim = random_optim(rng)
     fc = 512
@@ -170,6 +169,21 @@ def vgg_D_optim_cifar(rng):
     data = random_data(rng, datasets=('cifar10',))
     return {'optim': optim, 'model': model, 'data': data}
 
+def vgg_D_optim_cifar_24h(rng):
+    optim = random_optim(rng)
+    optim['budget_secs'] = 24 * 3600
+    fc = 512
+    model = model_vgg_D(fc=[fc, fc])
+    data = random_data(rng, datasets=('cifar10',))
+    return {'optim': optim, 'model': model, 'data': data}
+
+def vgg_A_optim_cifar_24h(rng):
+    optim = random_optim(rng)
+    optim['budget_secs'] = 24 * 3600
+    fc = 512
+    model = model_vgg_A(fc=[fc, fc])
+    data = random_data(rng, datasets=('cifar10',))
+    return {'optim': optim, 'model': model, 'data': data}
 
 def mini_random(rng):
     optim = random_optim(rng)
