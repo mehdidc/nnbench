@@ -201,9 +201,16 @@ def vgg_D_optim_cifar_schedule_24h(rng):
 
 
 def vgg_A_optim_cifar_24h(rng):
-    optim = random_optim(rng)
+    optim = ok_optim.copy()
+    optim['lr_schedule'] = {
+        'type': 'decrease_when_stop_improving',
+        'loss': rng.choice(('train_acc', 'val_acc')),
+        'shrink_factor': rng.choice((2, 5, 10)),
+        'patience': rng.choice((10, 15, 20, 30, 40, 50)),
+        'min_lr': rng.choice((0.000001, 0.00001, 0.0001, 0.001))
+    }
     optim['budget_secs'] = 24 * 3600
-    fc = 512
+    fc = rng.choice((64, 128, 256, 512, 800))
     model = model_vgg_A(fc=[fc, fc])
     data = random_data(rng, datasets=('cifar10',))
     return {'optim': optim, 'model': model, 'data': data}
