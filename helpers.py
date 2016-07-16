@@ -148,6 +148,11 @@ class LearningRateScheduler(keras.callbacks.Callback):
                     new_lr = old_lr / self.shrink_factor
                 else:
                     new_lr = old_lr
+        elif self.type == 'decrease_every':
+            if epoch % (self.patience) == 0:
+                new_lr = old_lr / self.shrink_factor
+            else:
+                new_lr = old_lr
         else:
             raise Exception('Unknown lr schedule : {}'.format(self.type))
         new_lr = max(new_lr, self.min_lr)

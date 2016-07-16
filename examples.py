@@ -24,6 +24,16 @@ default_optim = {
 ok_optim = default_optim.copy()
 ok_optim['algo_params'] = {'nesterov': True, 'lr': 0.0005, 'momentum': 0.99}
 
+torch_blog_optim = default_optim.copy()
+torch_blog_optim['algo_params'] = {'nesterov': True, 'lr': 1., 'momentum': 0.9}
+torch_blog_optim['lr_schedule'] = {
+    'type': 'decrease_every',
+    'loss': 'val_acc',
+    'shrink_factor': 2,
+    'patience': 25,
+    'min_lr': 0
+}
+
 small_test_cnn = {
     'model': {
         'name': 'vgg',
@@ -63,8 +73,8 @@ small_test_fc['model'] = {
 }
 
 small_test = deepcopy(small_test_fc)
+small_test['optim'] = torch_blog_optim.copy()
 small_test['optim']['budget_secs'] = 60 * 100
-
 
 def random_optim(rng):
     optim = deepcopy(default_optim)
@@ -131,6 +141,18 @@ def model_vgg_D(fc=[4096, 4096]):
                 'activation': 'relu'}}
 
 
+def model_vgg_E(fc=[4096, 4096]):
+    return {'name': 'vgg',
+            'params': {
+                'nb_filters': [64, 128, 256, 512, 512],
+                'size_blocks': [3, 3, 4, 4, 4],
+                'size_filters': 3,
+                'stride': 2,
+                'fc': fc,
+                'fc_dropout': 0.5,
+                'activation': 'relu'}}
+
+
 def random_model_vgg(rng):
     stride = 2
     size_filters = rng.choice((2, 3))
@@ -183,7 +205,6 @@ def vgg_D_optim_cifar_24h(rng):
     data = random_data(rng, datasets=('cifar10',))
     return {'optim': optim, 'model': model, 'data': data}
 
-
 def vgg_D_optim_cifar_schedule_24h(rng):
     optim = ok_optim.copy()
     optim['lr_schedule'] = {
@@ -197,6 +218,16 @@ def vgg_D_optim_cifar_schedule_24h(rng):
     fc = 512
     model = model_vgg_D(fc=[fc, fc])
     data = random_data(rng, datasets=('cifar10',))
+    return {'optim': optim, 'model': model, 'data': data}
+
+
+def vgg_D_optim_cifar_torch_blog_24h(rng):
+    optim = torch_blog_optim.copy()
+    optim['budget_secs'] = 24 * 3600
+    fc = 512
+    model = model_vgg_D(fc=[fc, fc])
+    data = random_data(rng, datasets=('cifar10',))
+    print(model)
     return {'optim': optim, 'model': model, 'data': data}
 
 
@@ -214,6 +245,22 @@ def vgg_A_optim_cifar_24h(rng):
     model = model_vgg_A(fc=[fc, fc])
     data = random_data(rng, datasets=('cifar10',))
     return {'optim': optim, 'model': model, 'data': data}
+
+def vgg_E_optim_cifar_24h(rng):
+    optim = ok_optim.copy()
+    optim['lr_schedule'] = {
+        'type': 'decrease_when_stop_improving',
+        'loss': rng.choice(('train_acc', 'val_acc')),
+        'shrink_factor': rng.choice((2, 5, 10)),
+        'patience': rng.choice((10, 15, 20, 30, 40, 50)),
+        'min_lr': rng.choice((0.000001, 0.00001, 0.0001, 0.001))
+    }
+    optim['budget_secs'] = 24 * 3600
+    fc = rng.choice((64, 128, 256, 512, 800))
+    model = model_vgg_E(fc=[fc, fc])
+    data = random_data(rng, datasets=('cifar10',))
+    return {'optim': optim, 'model': model, 'data': data}
+
 
 
 def mini_random(rng):
