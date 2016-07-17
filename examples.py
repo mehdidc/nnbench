@@ -34,6 +34,7 @@ torch_blog_optim['lr_schedule'] = {
     'min_lr': 0
 }
 
+
 small_test_cnn = {
     'model': {
         'name': 'vgg',
@@ -223,6 +224,9 @@ def vgg_D_optim_cifar_schedule_24h(rng):
 
 def vgg_D_optim_cifar_torch_blog_24h(rng):
     optim = torch_blog_optim.copy()
+    optim['algo_params'] = {'nesterov': bool(rng.choice((True, False))),
+                            'lr':  rng.choice((0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1)),
+                            'momentum': 0.9}
     optim['budget_secs'] = 24 * 3600
     fc = 512
     model = model_vgg_D(fc=[fc, fc])
@@ -255,13 +259,13 @@ def vgg_E_optim_cifar_24h(rng):
         'patience': rng.choice((10, 15, 20, 30, 40, 50)),
         'min_lr': rng.choice((0.000001, 0.00001, 0.0001, 0.001))
     }
+    lr = rng.choice((0.1, 0.01, 0.05, 0.001, 0.005, 0.0001, 0.0005))
+    optim['algo_params'] = {'nesterov': True, 'lr':lr, 'momentum': 0.99}
     optim['budget_secs'] = 24 * 3600
     fc = rng.choice((64, 128, 256, 512, 800))
     model = model_vgg_E(fc=[fc, fc])
     data = random_data(rng, datasets=('cifar10',))
     return {'optim': optim, 'model': model, 'data': data}
-
-
 
 def mini_random(rng):
     optim = random_optim(rng)
