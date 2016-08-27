@@ -206,6 +206,17 @@ def vgg_D_optim_cifar_24h(rng):
     data = random_data(rng, datasets=('cifar10',))
     return {'optim': optim, 'model': model, 'data': data}
 
+
+def vgg_D_optim_cifar_24h_no_valid(rng):
+    optim = random_optim(rng)
+    optim['budget_secs'] = 24 * 3600
+    fc = 512
+    model = model_vgg_D(fc=[fc, fc])
+    data = random_data(rng, datasets=('cifar10',))
+    data['valid_ratio'] = 0
+    return {'optim': optim, 'model': model, 'data': data}
+
+
 def vgg_D_optim_cifar_schedule_24h(rng):
     optim = ok_optim.copy()
     optim['lr_schedule'] = {
