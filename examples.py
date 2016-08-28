@@ -208,7 +208,9 @@ def vgg_D_optim_cifar_24h(rng):
 
 
 def vgg_D_optim_cifar_24h_no_valid(rng):
-    optim = random_optim(rng)
+    optim = ok_optim.copy()
+    optim['patience_loss'] = 'train_acc'
+    optim['lr_schedule']['loss'] = 'train_acc'
     optim['budget_secs'] = 24 * 3600
     fc = 512
     model = model_vgg_D(fc=[fc, fc])
