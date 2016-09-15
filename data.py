@@ -76,6 +76,10 @@ def build_iterators(train_X_full, train_y_full, test_X, test_y,
         valid_X = train_X_full[0:default_validation_size]
         valid_y = train_y_full[0:default_validation_size]
 
+    print('Shape of training set   : {}'.format(train_X.shape))
+    print('Shape of validation set : {}'.format(valid_X.shape))
+    print('Shape of test set       : {}'.format(test_X.shape))
+
     train_iterator = BatchIterator(train_X, train_y,
                                    shuffle=shuffle,
                                    random_state=random_state)

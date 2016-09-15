@@ -302,11 +302,15 @@ def take_bests_on_validation_set_and_use_full_training_data(rng):
 
     jobs = filter(lambda j:'val_acc' in j['results'], jobs)
     jobs = sorted(jobs, key=lambda j:(j['results']['val_acc'][-1]), reverse=True)
-    j = jobs[0]
+
+    j = rng.choice(jobs[0:10])
     print(j['results']['val_acc'][-1])
+    nb_epochs = 1 + np.argmax(j['results']['val_acc'])
+    print(nb_epochs)
     params = j['content'].copy()
 
     optim = params['optim']
+    optim['nb_epoch'] = nb_epochs
     optim['patience_loss'] = None
     optim['lr_schedule']['loss'] = None
     

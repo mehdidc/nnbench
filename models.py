@@ -16,16 +16,62 @@ def fc(hp, input_shape=(1, 28, 28), nb_outputs=10):
     return Model(inp, out)
 
 
-def dense_block_(x, nb_layers, act='relu', p=0.2):
-    prev = [x]
+def dense_block_(x, nb_layers, k=12, act='relu', p=0.2, size_filters=3):
+    prev = x
     for i in range(nb_layers):
-        x_concat = Merge(prev, concat_axis=1, mode='concat')
         x = BatchNormalization()(x)
         x = Activation(act)(x)
-        x = Convolution2D(k, size_filters, size_filters)(x_concat)
-        x = Droput(p)(x)
-        prev.append(x)
+        x = Convolution2D(k, size_filters, size_filters)(x)
+        if p: 
+            x = Dropout(p)(x)
+        x = Merge([prev, x], concat_axis=1, mode='concat')
+        prev = x
     return x
+
+def dense_transition_(x, k, act='relu', p=0.2, size_filter=3):
+    x = BatchNormalization()(x)
+    x = Activation(act)(x)
+    x = Convolution2D(k, size_filter, size_filter)(x)
+    x = AveragePooling2D((2, 2))(x)
+    return x
+
+
+def densenet(hp, input_shape=(3, 227, 227), nb_outputs=10):
+    """
+    growth : int, nb of feature maps to add between each dense block (default=12)
+    size_filters : int(default=3)
+    dropout proba : float(default=0)
+    per_block : int(default=3)
+    nb_blocks : int(default=3)
+    """
+    growth = hp['growth']
+    size_filters = hp['size_filters']
+    dropout_p = hp['dropout']
+    per_block = hp['per_block']
+    nb_blocks = hp['nb_blocks']
+    act = hp['activation']
+    nb_fmaps = h['feature_maps_init']
+
+    inp = Input(shape=input_shape)
+    x = inp
+ 
+    x = Convolution2D(nb_fmaps, size_filter, size_filter)(x)
+ 
+    for _ in range(nb_blocks):
+        x = dense_block_(
+                x, 
+                per_block, 
+                k=nb_fmaps, 
+                act=act, 
+                p=dropout_p, 
+                size_filters=size_filters)
+        nb_fmaps += growth
+        x = dense_transition_(x, k=nb_fmaps, act=act, p=dropout_p, size_filter=size_filters)
+    
+    x = GlobalAveragePooling2D()(x)
+    x = Dense(nb_outputs, activation='softmax')(x)
+    out = x
+    return Model(inp, out)
 
 
 def vgg_partial_(nb_filters=[64, 128, 256, 512, 512],
@@ -51,6 +97,7 @@ def vgg_partial_(nb_filters=[64, 128, 256, 512, 512],
     out = x
     return inp, out
 
+     
 
 def vgg(hp, input_shape=(3, 227, 227), nb_outputs=10):
     """
