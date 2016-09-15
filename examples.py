@@ -1,4 +1,5 @@
 from copy import deepcopy
+import numpy as np
 
 default_optim = {
     'algo': 'SGD',
@@ -72,10 +73,6 @@ small_test_fc['model'] = {
         'activation': 'relu',
     }
 }
-
-small_test = deepcopy(small_test_fc)
-small_test['optim'] = torch_blog_optim.copy()
-small_test['optim']['budget_secs'] = 60 * 100
 
 def random_optim(rng):
     optim = deepcopy(default_optim)
@@ -294,3 +291,31 @@ def micro_random(rng):
     data = random_data(rng, datasets=('cifar10',))
     optim['budget_secs'] = 60 * 15
     return {'optim': optim, 'model': model, 'data': data}
+
+def take_bests_on_validation_set_and_use_full_training_data(rng):
+    from lightjob.cli import load_db
+    from lightjob.db import SUCCESS
+    db = load_db()
+    jobs = db.jobs_with(state=SUCCESS)
+    jobs = list(jobs)
+    db.close()
+
+    jobs = filter(lambda j:'val_acc' in j['results'], jobs)
+    jobs = sorted(jobs, key=lambda j:(j['results']['val_acc'][-1]), reverse=True)
+    j = jobs[0]
+    print(j['results']['val_acc'][-1])
+    params = j['content'].copy()
+
+    optim = params['optim']
+    optim['patience_loss'] = None
+    optim['lr_schedule']['loss'] = None
+    
+    data = params['data']
+    data['valid_ratio'] = 0
+
+    return params
+
+    
+small_test = vgg_D_optim_cifar_torch_blog_24h(np.random)
+small_test['optim'] = torch_blog_optim.copy()
+small_test['optim']['budget_secs'] = 60 * 15

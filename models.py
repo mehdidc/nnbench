@@ -16,6 +16,18 @@ def fc(hp, input_shape=(1, 28, 28), nb_outputs=10):
     return Model(inp, out)
 
 
+def dense_block_(x, nb_layers, act='relu', p=0.2):
+    prev = [x]
+    for i in range(nb_layers):
+        x_concat = Merge(prev, concat_axis=1, mode='concat')
+        x = BatchNormalization()(x)
+        x = Activation(act)(x)
+        x = Convolution2D(k, size_filters, size_filters)(x_concat)
+        x = Droput(p)(x)
+        prev.append(x)
+    return x
+
+
 def vgg_partial_(nb_filters=[64, 128, 256, 512, 512],
                  size_filters=[3, 3, 3, 3, 3],
                  stride=[2, 2, 2, 2, 2],

@@ -162,6 +162,14 @@ class LearningRateScheduler(keras.callbacks.Callback):
         K.set_value(self.model.optimizer.lr, new_lr)
         logs['lr'] = new_lr
 
+class Time(keras.callbacks.Callback):
+
+    def on_epoch_begin(self, epoch, logs={}):
+        self.time = time.time()
+
+    def on_epoch_end(self, epoch, logs={}):
+        logs['duration_sec'] = time.time() - self.time
+
 
 class Show(keras.callbacks.Callback):
 
