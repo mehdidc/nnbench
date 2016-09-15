@@ -55,8 +55,13 @@ def insert(where, nb):
 
 
 @click.command()
-def smalltest():
-    train_model(examples.small_test, outdir='smalltest')
+@click.option('--where', default='micro_random', required=False)
+def smalltest(where):
+    np.random.seed(42)
+    rng = np.random
+    params = getattr(examples, where)(rng)
+    params['optim']['budget_secs'] = 60 * 15
+    train_model(params, outdir='smalltest')
 
 
 def train_and_save(db, job, outdir=None):

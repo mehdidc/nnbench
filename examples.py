@@ -1,6 +1,11 @@
 from copy import deepcopy
 import numpy as np
 
+##############################################
+# Defaults
+##############################################
+
+
 default_optim = {
     'algo': 'SGD',
     'algo_params': {'lr': 0.01, 'momentum': 0.95},
@@ -74,34 +79,10 @@ small_test_fc['model'] = {
     }
 }
 
-def random_optim(rng):
-    optim = deepcopy(default_optim)
-    algo = rng.choice(('Adam', 'RMSprop', 'SGD', 'Adadelta'))
-    optim['algo'] = algo
 
-    lr = rng.choice((0.1, 0.01, 0.05, 0.001, 0.005, 0.0001, 0.0005))
-    algo_params = {}
-    algo_params['lr'] = lr
-    if algo == 'SGD':
-        momentum = rng.choice((0.5, 0.9, 0.95, 0.99, 0))
-        nesterov = bool(rng.choice((True, False)))
-        algo_params.update({'momentum': momentum, 'nesterov': nesterov})
-    optim['algo_params'] = algo_params
-    return optim
-
-
-def random_data(rng, datasets=('mnist', 'cifar10')):
-    return {'shuffle': True,
-            'name': rng.choice(datasets),
-            'prep_random_state': 1,
-            'valid_ratio': None,
-            'augmentation': {
-                'horiz_flip': True,
-                'vert_flip': False,
-                'shear_range': 0,
-                'rotation_range': 0,
-                'zoom_range': 0}}
-
+##############################################
+# VGG
+##############################################
 
 def model_vgg_A(fc=[4096, 4096]):
     return {'name': 'vgg',
@@ -175,16 +156,6 @@ def random_model_vgg(rng):
             'fc': fc,
             'fc_dropout': 0.5,
             'activation': random_activation(rng)}}
-
-
-def random_activation(rng):
-    return rng.choice(('relu', 'leaky_relu'))
-
-
-def random_model(rng):
-    return random_model_vgg(rng)
-
-# real ones to use with where=
 
 
 def vgg_D_optim_cifar(rng):
@@ -277,6 +248,37 @@ def vgg_E_optim_cifar_24h(rng):
     data = random_data(rng, datasets=('cifar10',))
     return {'optim': optim, 'model': model, 'data': data}
 
+##############################################
+# DenseNet 
+##############################################
+
+def default_densenet_model(rng):
+    return {
+        'name': 'densenet',
+        'params': {
+            'growth': 12,
+            'size_filter_block': 3,
+            'size_filter_transition': 1,
+            'dropout': 0,
+            'per_block': 3,
+            'nb_blocks': 3,
+            'activation': 'relu',
+            'init_feature_maps': 16
+        }
+    }
+
+def default_densenet(rng):
+    optim = ok_optim.copy()
+    optim['budget_secs'] = 24 * 3600
+    model = default_densenet_model(rng)
+    data = random_data(rng, datasets=('cifar10',))
+    return {'optim': optim, 'model': model, 'data': data}
+
+
+##############################################
+# Random ones
+##############################################
+
 def mini_random(rng):
     optim = random_optim(rng)
     model = random_model(rng)
@@ -291,6 +293,12 @@ def micro_random(rng):
     data = random_data(rng, datasets=('cifar10',))
     optim['budget_secs'] = 60 * 15
     return {'optim': optim, 'model': model, 'data': data}
+
+
+##############################################
+# General ones
+##############################################
+
 
 def take_bests_on_validation_set_and_use_full_training_data(rng):
     from lightjob.cli import load_db
@@ -316,10 +324,44 @@ def take_bests_on_validation_set_and_use_full_training_data(rng):
     
     data = params['data']
     data['valid_ratio'] = 0
-
     return params
 
-    
-small_test = vgg_D_optim_cifar_torch_blog_24h(np.random)
-small_test['optim'] = torch_blog_optim.copy()
-small_test['optim']['budget_secs'] = 60 * 15
+##############################################
+# General subparts
+##############################################
+
+
+def random_activation(rng):
+    return rng.choice(('relu', 'leaky_relu'))
+
+def random_model(rng):
+    return random_model_vgg(rng)
+
+
+def random_optim(rng):
+    optim = deepcopy(default_optim)
+    algo = rng.choice(('Adam', 'RMSprop', 'SGD', 'Adadelta'))
+    optim['algo'] = algo
+
+    lr = rng.choice((0.1, 0.01, 0.05, 0.001, 0.005, 0.0001, 0.0005))
+    algo_params = {}
+    algo_params['lr'] = lr
+    if algo == 'SGD':
+        momentum = rng.choice((0.5, 0.9, 0.95, 0.99, 0))
+        nesterov = bool(rng.choice((True, False)))
+        algo_params.update({'momentum': momentum, 'nesterov': nesterov})
+    optim['algo_params'] = algo_params
+    return optim
+
+
+def random_data(rng, datasets=('mnist', 'cifar10')):
+    return {'shuffle': True,
+            'name': rng.choice(datasets),
+            'prep_random_state': 1,
+            'valid_ratio': None,
+            'augmentation': {
+                'horiz_flip': True,
+                'vert_flip': False,
+                'shear_range': 0,
+                'rotation_range': 0,
+                'zoom_range': 0}}
