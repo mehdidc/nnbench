@@ -314,9 +314,7 @@ def take_bests_on_validation_set_and_use_full_training_data(rng):
     j = rng.choice(jobs[0:10])
     print(j['results']['val_acc'][-1])
     nb_epochs = 1 + np.argmax(j['results']['val_acc'])
-    print(nb_epochs)
     params = j['content'].copy()
-
     optim = params['optim']
     optim['nb_epoch'] = nb_epochs
     optim['patience_loss'] = None
@@ -325,6 +323,35 @@ def take_bests_on_validation_set_and_use_full_training_data(rng):
     data = params['data']
     data['valid_ratio'] = 0
     return params
+
+def take_bests_on_validation_set_and_apply_zca(rng):
+    from lightjob.cli import load_db
+    from lightjob.db import SUCCESS
+    db = load_db()
+    jobs = db.jobs_with(state=SUCCESS)
+    jobs = list(jobs)
+    db.close()
+
+    jobs = filter(lambda j:'val_acc' in j['results'], jobs)
+    jobs = sorted(jobs, key=lambda j:(j['results']['val_acc'][-1]), reverse=True)
+
+    j = rng.choice(jobs[0:10])
+    print(j['results']['val_acc'][-1])
+    nb_epochs = 1 + np.argmax(j['results']['val_acc'])
+    params = j['content'].copy()
+    print(params['data'])
+    params['data']['use_zca'] = True
+
+    optim = params['optim']
+    optim['nb_epoch'] = nb_epochs
+    optim['patience_loss'] = None
+    optim['lr_schedule']['loss'] = None
+    
+    data = params['data']
+    #data['valid_ratio'] = 0
+    return params
+
+
 
 ##############################################
 # General subparts
