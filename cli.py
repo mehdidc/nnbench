@@ -56,11 +56,12 @@ def insert(where, nb):
 
 @click.command()
 @click.option('--where', default='micro_random', required=False)
-def smalltest(where):
+@click.option('--budget-hours', default=None, required=False)
+def test(where, budget_hours):
     np.random.seed(42)
     rng = np.random
     params = getattr(examples, where)(rng)
-    params['optim']['budget_secs'] = 60 * 15
+    params['optim']['budget_secs'] = budget_hours * 3600 if budget_hours else 60 * 15
     train_model(params, outdir='smalltest')
 
 
@@ -81,5 +82,5 @@ def train_and_get_results(params, outdir=None):
 if __name__ == '__main__':
     main.add_command(insert)
     main.add_command(run)
-    main.add_command(smalltest)
+    main.add_command(test)
     main()

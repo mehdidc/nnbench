@@ -259,8 +259,8 @@ def default_densenet_model(rng):
             'growth': 12,
             'size_filter_block': 3,
             'size_filter_transition': 1,
-            'dropout': 0,
-            'per_block': 3,
+            'dropout': 0.2,
+            'per_block': 12,
             'nb_blocks': 3,
             'activation': 'relu',
             'init_feature_maps': 16
