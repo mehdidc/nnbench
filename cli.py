@@ -6,7 +6,7 @@ from lightjob.db import AVAILABLE, PENDING, RUNNING, SUCCESS
 
 import numpy as np
 import os
-
+import json
 
 @click.group()
 def main():
@@ -55,13 +55,17 @@ def insert(where, nb):
 
 
 @click.command()
+@click.option('--from-json', default=None, required=False)
 @click.option('--where', default='micro_random', required=False)
 @click.option('--budget-hours', default=None, required=False)
-def test(where, budget_hours):
+def test(from_json, where, budget_hours):
     np.random.seed(42)
     rng = np.random
-    params = getattr(examples, where)(rng)
-    params['optim']['budget_secs'] = budget_hours * 3600 if budget_hours else 60 * 15
+    if from_json:
+        params = json.load(open(from_json))
+    else:
+        params = getattr(examples, where)(rng)
+        params['optim']['budget_secs'] = budget_hours * 3600 if budget_hours else 60 * 15
     train_model(params, outdir='smalltest')
 
 

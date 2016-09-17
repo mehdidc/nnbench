@@ -341,13 +341,13 @@ def take_bests_on_validation_set_and_apply_zca(rng):
     params = j['content'].copy()
     print(params['data'])
     params['data']['use_zca'] = True
-
-    optim = params['optim']
-    optim['nb_epoch'] = nb_epochs
-    optim['patience_loss'] = None
-    optim['lr_schedule']['loss'] = None
-    
-    data = params['data']
+    params['optim']['algo'] = 'adam'
+    params['optim']['algo_params'] = {'lr': 0.01}
+    #optim = params['optim']
+    #optim['nb_epoch'] = nb_epochs
+    #optim['patience_loss'] = None
+    #optim['lr_schedule']['loss'] = None
+    #data = params['data']
     #data['valid_ratio'] = 0
     return params
 
