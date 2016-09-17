@@ -99,7 +99,7 @@ class RecordEachEpoch(keras.callbacks.Callback):
         logs[self.name] = self.compute_fn()
         self.values.append(self.name)
 
-eps = 1e-10
+eps = 1e-8
 
 
 class LearningRateScheduler(keras.callbacks.Callback):
@@ -153,6 +153,21 @@ class LearningRateScheduler(keras.callbacks.Callback):
                 new_lr = old_lr / self.shrink_factor
             else:
                 new_lr = old_lr
+        elif self.type == 'cifar':
+            # source : https://github.com/gcr/torch-residual-networks/blob/master/train-cifar.lua#L181-L187
+            if epoch == 80:
+                new_lr = old_lr / 10.
+            elif epoch == 120:
+                new_lr = old_lr / 10.
+            else:
+                new_lr = old_lr
+            print(epoch, new_lr, old_lr)
+            #if epoch < 80:
+            #    new_lr = 0.1
+            #elif epoch < 120:
+            #    new_lr = 0.01
+            #3else:
+            #    new_lr = 0.001
         else:
             raise Exception('Unknown lr schedule : {}'.format(self.type))
         new_lr = max(new_lr, self.min_lr)

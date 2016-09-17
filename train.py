@@ -3,6 +3,7 @@ from data import load_data
 from keras import optimizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.preprocessing.image import ImageDataGenerator
+from keras import backend as K
 
 import os
 
@@ -29,7 +30,7 @@ def train_model(params, outdir=None):
     valid_ratio = data_params['valid_ratio']
     dataset_name = data_params['name']
     data_preparation_random_state = data_params['prep_random_state']
-    zca = data_params.get('use_zca', False)
+    #zca = data_params.get('use_zca', False)
 
     augmentation = data_params['augmentation']
     use_horiz_flip = augmentation['horiz_flip']
@@ -44,6 +45,8 @@ def train_model(params, outdir=None):
     pred_batch_size = optim_params['pred_batch_size']
     patience = optim_params['patience']
     patience_loss = optim_params['patience_loss']
+    l1 = optim_params['l1']
+    l2 = optim_params['l2']
     algo = optim_params['algo']
     algo_params = optim_params['algo_params']
     nb_epoch = optim_params['nb_epoch']
@@ -74,11 +77,18 @@ def train_model(params, outdir=None):
 
     optimizer = get_optimizer(algo)
     optimizer = optimizer(**algo_params)
-    model.compile(loss='categorical_crossentropy',
+
+    def loss_fn(y_true, y_pred):
+        reg = 0
+        if l1: reg += l1 * sum(K.abs(layer.W).sum() for layer in model.layers if hasattr(layer, 'W'))
+        if l2 : reg += l2 * sum((layer.W**2).sum() for layer in model.layers if hasattr(layer, 'W'))
+        return K.categorical_crossentropy(y_pred, y_true) + reg
+
+    model.compile(loss=loss_fn,
                   optimizer=optimizer)
 
     def compute_train_accuracy():
-        train_flow = train_iterator.flow(repeat=False, batch_size=pred_batch_size),
+        train_flow = train_iterator.flow(repeat=False, batch_size=pred_batch_size)
         #train_flow = apply_transformers(train_flow, [prep])
         train_acc = compute_metric(
             model,
@@ -152,7 +162,8 @@ def train_model(params, outdir=None):
     train_flow = train_iterator.flow(repeat=True, batch_size=batch_size)
 
     data_prep = ImageDataGenerator(
-        zca_whitening=zca
+        #zca_whitening=zca,
+        #featurewise_center=True
     )
     data_prep.fit(train_iterator.inputs)
 
@@ -172,11 +183,13 @@ def train_model(params, outdir=None):
             return X_, y_
 
     transformers = []
-    transformers.append(augment)
-    transformers.append(prep)
+    #transformers.append(augment)
+    #transformers.append(prep)
     train_flow = apply_transformers(train_flow, transformers, rng=np.random)
-    
+
     print('Number of parameters : {}'.format(model.count_params()))
+    nb = sum(1 for layer in model.layers if hasattr(layer, 'W'))
+    print('Number of learnable layers : {}'.format(nb))
     try:
         model.fit_generator(
             train_flow,
@@ -189,8 +202,8 @@ def train_model(params, outdir=None):
 
     model.load_weights(model_filename)
     
-    test_flow = test_iterator.flow(repeat=False, batch_size=pred_batch_size),
-    test_flow = apply_transformers(test_flow, [prep])
+    test_flow = test_iterator.flow(repeat=False, batch_size=pred_batch_size)
+    #test_flow = apply_transformers(test_flow, [prep])
     test_acc = compute_metric(
         model,
         test_flow,
