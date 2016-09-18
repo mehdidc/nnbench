@@ -237,7 +237,6 @@ def vgg_D_optim_cifar_torch_blog_24h(rng):
     fc = 512
     model = model_vgg_D(fc=[fc, fc])
     data = random_data(rng, datasets=('cifar10',))
-    print(model)
     return {'optim': optim, 'model': model, 'data': data}
 
 

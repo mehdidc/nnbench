@@ -17,10 +17,6 @@
         "lr_schedule": {
             "name": "cifar", 
             "params":{
-                "loss": "val_acc", 
-                "shrink_factor": 2, 
-                "min_lr": 0, 
-                "patience": 10
             }
         }, 
         "early_stopping":{
@@ -45,6 +41,18 @@
     }, 
     "data": {
         "preprocessing":[
+            {"name": "augmentation",
+             "only_train": true,
+             "params": {
+                "horizontal_flip": true,
+                "vertical_flip": false,
+                "shear_range": 0,
+                "rotation_range": 0,
+                "zoom_range": 0,
+                "width_shift_range": 0,
+                "height_shift_range": 0
+             }
+           }
         ],
         "seed": 1, 
         "shuffle": true, 

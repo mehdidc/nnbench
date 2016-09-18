@@ -103,7 +103,6 @@ class RecordEachEpoch(keras.callbacks.Callback):
 
 eps = 1e-8
 
-
 class LearningRateScheduler(keras.callbacks.Callback):
     def __init__(self,
                  name='decrease_when_stop_improving',
@@ -154,7 +153,7 @@ class LearningRateScheduler(keras.callbacks.Callback):
                 else:
                     new_lr = old_lr
         elif self.name == 'decrease_every':
-            every = params['patience']
+            every = params['every']
             shrink_factor = params['shrink_factor']
             if epoch % (every) == 0:
                 new_lr = old_lr / shrink_factor

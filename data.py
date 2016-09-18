@@ -87,7 +87,8 @@ def build_iterators(train_X_full, train_y_full, test_X, test_y,
                                    shuffle=False,
                                    random_state=random_state)
     test_iterator = BatchIterator(test_X, test_y,
-                                  shuffle=False)
+                                  shuffle=False,
+                                  random_state=random_state)
     info = {}
     info['nb_train_samples'] = train_X.shape[0]
     info['nb_valid_samples'] = valid_X.shape[0]

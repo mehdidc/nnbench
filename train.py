@@ -65,6 +65,7 @@ def train_model(params, outdir='out'):
     checkpoint = optim_params['checkpoint']
 
     seed = optim_params['seed']
+    np.random.seed(seed)
     budget_secs = float(optim_params['budget_secs'])
     
     # model params
@@ -80,8 +81,6 @@ def train_model(params, outdir='out'):
         random_state=data_preparation_random_state)
     
     # COMPILE MODEL
-
-    np.random.seed(seed)
     input_shape = info['input_shape']
     nb_outputs = info['nb_outputs']
     model_builder = get_model_builder(model_name)
@@ -130,19 +129,20 @@ def train_model(params, outdir='out'):
     ## CALLBACKS
     callbacks = []
 
-    compute_train_accuracy = compute_metric_fn(train_iterator, train_transformers, 'accuracy')
+    compute_train_accuracy = compute_metric_fn(train_iterator, test_transformers, 'accuracy')
     compute_valid_accuracy = compute_metric_fn(valid_iterator, test_transformers , 'accuracy')
     compute_test_accuracy = compute_metric_fn(test_iterator  , test_transformers , 'accuracy')
     
     # compute train and valid accuracy callbacks
 
+    callbacks.append(Time())
+
     callbacks.extend([
-        RecordEachEpoch(name='train_acc', compute_fn=compute_train_accuracy),
-        RecordEachEpoch(name='val_acc', compute_fn=compute_valid_accuracy)
+        #RecordEachEpoch(name='train_acc', compute_fn=compute_train_accuracy),
+        #RecordEachEpoch(name='val_acc', compute_fn=compute_valid_accuracy)
     ])
         
     # Epoch duration time measure callback
-    callbacks.append(Time())
     
     # Early stopping callback
     callbacks.extend(
