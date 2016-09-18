@@ -60,7 +60,7 @@ def train_model(params, outdir='out'):
 
     early_stopping = optim_params['early_stopping']
     early_stopping_name = early_stopping['name']
-    early_stopping_params = early_stopping_params['params']
+    early_stopping_params = early_stopping['params']
 
     checkpoint = optim_params['checkpoint']
 
@@ -90,7 +90,7 @@ def train_model(params, outdir='out'):
         input_shape=input_shape,
         nb_outputs=nb_outputs)
 
-    optimizer = get_optimizer(algo)
+    optimizer = get_optimizer(algo_name)
     optimizer = optimizer(**algo_params)
 
     def loss_fn(y_true, y_pred):
@@ -104,9 +104,9 @@ def train_model(params, outdir='out'):
 
     # PREPROCESSING
 
-    train_tranformers = []
+    train_transformers = []
     test_transformers = []
-    for prep in preprocesing:
+    for prep in preprocessing:
         transformer = build_transformer(prep['name'], prep['params'])
         only_train = prep.get('only_train', False)
         if only_train:
@@ -156,14 +156,15 @@ def train_model(params, outdir='out'):
     )
     
     # lr schedule callback
-    callbacks.extend(
-        build_lr_schedule_callbacks(name=lr_schedule_name, params=lr_schedule_params)
+    callbacks.append(
+        build_lr_schedule_callback(name=lr_schedule_name, params=lr_schedule_params)
     )
     # the rest of callbacks
     live_epoch_filename = os.path.join(outdir, 'epoch')
     live_batch_filename = os.path.join(outdir, 'batch')
     touch(live_epoch_filename)
     touch(live_batch_filename)
+
     callbacks.extend([
         Show(),
         LiveHistoryBatch(live_batch_filename),
@@ -224,13 +225,13 @@ def build_data_augmentation_transformer(rotation_range=0,
                                         horizontal_flip=False, 
                                         vertical_flip=False,
                                         width_shift_range=0,
-                                        height_shift_range=0)
+                                        height_shift_range=0):
     data_augment = ImageDataGenerator(
         rotation_range=rotation_range,
         shear_range=shear_range,
         zoom_range=zoom_range,
-        horizontal_flip=use_horiz_flip,
-        vertical_flip=use_vert_flip,
+        horizontal_flip=horizontal_flip,
+        vertical_flip=vertical_flip,
         width_shift_range=width_shift_range,
         height_shift_range=height_shift_range)
     
@@ -251,7 +252,7 @@ def build_early_stopping_callbacks(name, params, outdir='out'):
     elif name == 'none':
         return []
 
-def build_model_checkpoint_callback(name, params, model_filename='model.pkl'):
+def build_model_checkpoint_callback(params, model_filename='model.pkl'):
     loss = params['loss']
     save_best_only = params['save_best_only']
     return ModelCheckpoint(model_filename, 
@@ -260,5 +261,5 @@ def build_model_checkpoint_callback(name, params, model_filename='model.pkl'):
                            save_best_only=save_best_only,
                            mode='auto' if loss else 'min')
 
-def build_lr_schedule_callback(name, params);
+def build_lr_schedule_callback(name, params):
     return LearningRateScheduler(name=name, params=params)

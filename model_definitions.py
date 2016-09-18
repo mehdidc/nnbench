@@ -34,8 +34,9 @@ default_optim = {
         }
     },
     'checkpoint':{
-        'loss': 'val_acc'
-    }
+        'loss': 'val_acc',
+        'save_best_only': True
+    },
     'seed': 42,
     'budget_secs': 'inf'
 }
@@ -71,9 +72,10 @@ small_test_cnn = {
     'data': {
         'preprocessing':[
             {'name': 'augmentation',
+             'only_train': True,
              'params': {
-                'horiz_flip': True,
-                'vert_flip': False,
+                'horizontal_flip': True,
+                'vertical_flip': False,
                 'shear_range': 0,
                 'rotation_range': 0,
                 'zoom_range': 0,
@@ -365,7 +367,7 @@ def random_model(rng):
     return random_model_vgg(rng)
 
 
-def random_optim(rng):
+def random_optim(rng, extended=False):
     optim = deepcopy(default_optim)
     algo = rng.choice(('Adam', 'RMSprop', 'SGD', 'Adadelta'))
 
@@ -386,13 +388,18 @@ def random_optim(rng):
 def random_data(rng, datasets=('mnist', 'cifar10')):
     return {'shuffle': True,
             'name': rng.choice(datasets),
-            'prep_random_state': 1,
+            'seed': 1,
             'valid_ratio': None,
-            'augmentation': {
-                'horiz_flip': True,
-                'vert_flip': False,
-                'shear_range': 0,
-                'rotation_range': 0,
-                "width_shift_range": 0,
-                'height_shift_range': 0,
-                'zoom_range': 0}}
+            'preprocessing':[
+                { 'name': 'augmentation',
+                  'only_train': True,
+                  'params':  {
+                    'horizontal_flip': True,
+                    'vertical_flip': False,
+                    'shear_range': 0,
+                    'rotation_range': 0,
+                    "width_shift_range": 0,
+                    'height_shift_range': 0,
+                    'zoom_range': 0}}
+            ]
+}

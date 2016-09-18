@@ -66,6 +66,7 @@ def test(from_json, where, budget_hours):
     else:
         params = getattr(model_definitions, where)(rng)
         params['optim']['budget_secs'] = budget_hours * 3600 if budget_hours else 60 * 15
+    print(json.dumps(params, indent=4))
     train_model(params, outdir='smalltest')
 
 

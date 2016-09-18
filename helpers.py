@@ -107,14 +107,19 @@ eps = 1e-8
 class LearningRateScheduler(keras.callbacks.Callback):
     def __init__(self,
                  name='decrease_when_stop_improving',
-                 **params):
+                 params=None):
         super(LearningRateScheduler, self).__init__()
+        if params is None:
+            params = {}
         self.name = name
-        self.params = params
+        self.schedule_params = params
     
     def on_epoch_end(self, epoch, logs={}):
         assert hasattr(self.model.optimizer, 'lr'), \
             'Optimizer must have a "lr" attribute.'
+        
+        params = self.schedule_params
+
         model = self.model
         old_lr = float(model.optimizer.lr.get_value())
         if epoch == 0:
@@ -122,10 +127,10 @@ class LearningRateScheduler(keras.callbacks.Callback):
         elif self.name == 'constant':
             new_lr = old_lr
         elif self.name == 'decrease_when_stop_improving':
-            patience = self.params['patience']
-            mode = self.params.get('mode', 'auto')
-            loss = self.params['loss']
-            shrink_factor = self.params['shrink_factor']
+            patience = params['patience']
+            mode = params.get('mode', 'auto')
+            loss = params['loss']
+            shrink_factor = params['shrink_factor']
             if epoch < patience:
                 new_lr = old_lr
             else:
@@ -149,8 +154,8 @@ class LearningRateScheduler(keras.callbacks.Callback):
                 else:
                     new_lr = old_lr
         elif self.name == 'decrease_every':
-            every = self.params['patience']
-            shrink_factor = self.params['shrink_factor']
+            every = params['patience']
+            shrink_factor = params['shrink_factor']
             if epoch % (every) == 0:
                 new_lr = old_lr / shrink_factor
             else:
@@ -164,7 +169,7 @@ class LearningRateScheduler(keras.callbacks.Callback):
             else:
                 new_lr = old_lr
         elif self.name == 'manual':
-            schedule = self.params['schedule']
+            schedule = params['schedule']
             new_lr = old_lr
             for s in schedule:
                 first, last = s['range']
@@ -174,7 +179,7 @@ class LearningRateScheduler(keras.callbacks.Callback):
                     break
         else:
             raise Exception('Unknown lr schedule : {}'.format(self.name))
-        min_lr = self.params.get('min_lr', 0)
+        min_lr = params.get('min_lr', 0)
         new_lr = max(new_lr, min_lr)
         if abs(new_lr - old_lr) > eps:
             print('prev learning rate : {}, '
