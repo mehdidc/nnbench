@@ -217,6 +217,8 @@ def build_transformer(name, params):
 
     if name == 'augmentation':
         return build_data_augmentation_transformer(**params)
+    elif name == 'padcrop':
+        return build_padcrop_transformer(**params)
     else:
         raise Exception('Unknown transformer : {}'.format(name))
 
@@ -240,6 +242,20 @@ def build_data_augmentation_transformer(rotation_range=0,
         for X_, y_ in data_augment.flow(X, y, batch_size=X.shape[0]):
             return X_, y_
     return augment
+
+def build_padcrop_transformer(pad=4):
+
+    def padcrop(X, y, rng):
+        batchsize = X.shape[0]
+        h, w = X.shape[2:]
+        padded = np.pad(X,((0,0),(0,0),(pad,pad),(pad,pad)),mode='constant')
+        random_cropped = np.zeros(X.shape, dtype=np.float32)
+        crops = rng.random_integers(0,high=2*pad,size=(batchsize,2))
+        for r in range(batchsize):
+            random_cropped[r,:,:,:] = padded[r,:,crops[r,0]:(crops[r,0]+h),crops[r,1]:(crops[r,1]+w)]
+        X = random_cropped
+        return X, y
+    return padcrop
 
 def build_early_stopping_callbacks(name, params, outdir='out'):
     if name == 'basic':

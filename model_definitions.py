@@ -86,7 +86,7 @@ small_test_cnn = {
         ],
         'seed': 1,
         'shuffle': True,
-        'valid_ratio': None,
+        'valid_ratio': None, # meaning use default
         'name': 'mnist',
     }
 }
@@ -409,7 +409,7 @@ def random_data(rng, datasets=('mnist', 'cifar10')):
     return {'shuffle': True,
             'name': rng.choice(datasets),
             'seed': 1,
-            'valid_ratio': None,
+            'valid_ratio': None, # meaning use default
             'preprocessing':[
                 { 'name': 'augmentation',
                   'only_train': True,

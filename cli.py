@@ -71,14 +71,16 @@ def test(from_json, where, budget_hours, outdir):
         else:
             # assumes it is a function if not dict
             params = attr(rng)
-        params['optim']['budget_secs'] = budget_hours * 3600 if budget_hours else 60 * 15
+        #params['optim']['budget_secs'] = budget_hours * 3600 if budget_hours else 60 * 15
     #print(json.dumps(params, indent=4))
     train_model(params, outdir=outdir)
 
 
 def train_and_save(db, job, outdir=None):
     if outdir is None:
-        outdir = os.path.join('out', job['summary'])
+        outdir = os.path.join('out', 'jobs', job['summary'])
+    if not os.path.exists(outdir):
+        os.mkdir(outdir)
     output = train_and_get_results(job['content'], outdir=outdir)
     db.update({'results': output}, job['summary'])
 

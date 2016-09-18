@@ -41,7 +41,7 @@ def load_data(name,
         data.X = data.X.reshape((data.X.shape[0], 3, 32, 32))
         test_X = data.X / 255.
         test_y = np_utils.to_categorical(data.y)
-        default_validation_size = 10000
+        default_validation_size = 5000 
     else:
         raise Exception('Unknown dataset : {}'.format(name))
     train_iterator, valid_iterator, test_iterator, info = build_iterators(
