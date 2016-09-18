@@ -10,6 +10,8 @@ import json
 def floatX(X):
     return X.astype('float32')
 
+def touch(filename):
+    open(filename, 'w').close()
 
 class BatchIterator(object):
 
@@ -104,18 +106,12 @@ eps = 1e-8
 
 class LearningRateScheduler(keras.callbacks.Callback):
     def __init__(self,
-                 type_='decrease_when_stop_improving',
-                 shrink_factor=10, loss='train_acc', mode='max',
-                 patience=1,
-                 min_lr=0.00001):
+                 name='decrease_when_stop_improving',
+                 **params):
         super(LearningRateScheduler, self).__init__()
-        self.type = type_
-        self.shrink_factor = shrink_factor
-        self.loss = loss
-        self.mode = mode
-        self.patience = patience
-        self.min_lr = min_lr
-
+        self.name = name
+        self.params = params
+    
     def on_epoch_end(self, epoch, logs={}):
         assert hasattr(self.model.optimizer, 'lr'), \
             'Optimizer must have a "lr" attribute.'
@@ -123,37 +119,43 @@ class LearningRateScheduler(keras.callbacks.Callback):
         old_lr = float(model.optimizer.lr.get_value())
         if epoch == 0:
             new_lr = old_lr
-        elif self.type == 'constant':
+        elif self.name == 'constant':
             new_lr = old_lr
-        elif self.type == 'decrease_when_stop_improving':
-            if epoch < self.patience:
+        elif self.name == 'decrease_when_stop_improving':
+            patience = self.params['patience']
+            mode = self.params.get('mode', 'auto')
+            loss = self.params['loss']
+            shrink_factor = self.params['shrink_factor']
+            if epoch < patience:
                 new_lr = old_lr
             else:
                 hist = model.history.history
-                value_epoch = logs[self.loss]
-                if self.mode == 'auto':
-                    best = max if 'acc' in self.loss else min
+                value_epoch = logs[loss]
+                if mode == 'auto':
+                    best = max if 'acc' in loss else min
                 else:
-                    best = {'max': max, 'min': min}[self.mode]
+                    best = {'max': max, 'min': min}[mode]
                 arg_best = np.argmax if best == max else np.argmin
-                best_index = arg_best(hist[self.loss])
-                best_value = hist[self.loss][best_index]
+                best_index = arg_best(hist[loss])
+                best_value = hist[loss][best_index]
                 if ( best(value_epoch, best_value) == best_value and
-                     epoch - best_index + 1 >= self.patience):
+                     epoch - best_index + 1 >= patience):
                     print('shrinking learning rate, loss : {},'
                           'prev best epoch : {}, prev best value : {},'
-                          'current value: {}'.format(self.loss,
+                          'current value: {}'.format(loss,
                                                      best_index + 1, best_value,
                                                      value_epoch))
-                    new_lr = old_lr / self.shrink_factor
+                    new_lr = old_lr / shrink_factor
                 else:
                     new_lr = old_lr
-        elif self.type == 'decrease_every':
-            if epoch % (self.patience) == 0:
-                new_lr = old_lr / self.shrink_factor
+        elif self.name == 'decrease_every':
+            every = self.params['patience']
+            shrink_factor = self.params['shrink_factor']
+            if epoch % (every) == 0:
+                new_lr = old_lr / shrink_factor
             else:
                 new_lr = old_lr
-        elif self.type == 'cifar':
+        elif self.name == 'cifar':
             # source : https://github.com/gcr/torch-residual-networks/blob/master/train-cifar.lua#L181-L187
             if epoch == 80:
                 new_lr = old_lr / 10.
@@ -161,15 +163,19 @@ class LearningRateScheduler(keras.callbacks.Callback):
                 new_lr = old_lr / 10.
             else:
                 new_lr = old_lr
-            #if epoch < 80:
-            #    new_lr = 0.1
-            #elif epoch < 120:
-            #    new_lr = 0.01
-            #3else:
-            #    new_lr = 0.001
+        elif self.name == 'manual':
+            schedule = self.params['schedule']
+            new_lr = old_lr
+            for s in schedule:
+                first, last = s['range']
+                lr = s['lr']
+                if epoch >= first and epoch <= last:
+                    new_lr = lr
+                    break
         else:
-            raise Exception('Unknown lr schedule : {}'.format(self.type))
-        new_lr = max(new_lr, self.min_lr)
+            raise Exception('Unknown lr schedule : {}'.format(self.name))
+        min_lr = self.params.get('min_lr', 0)
+        new_lr = max(new_lr, min_lr)
         if abs(new_lr - old_lr) > eps:
             print('prev learning rate : {}, '
                   'new learning rate : {}'.format(old_lr, new_lr))

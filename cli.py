@@ -1,6 +1,6 @@
 import click
 from train import train_model
-import examples
+import model_definitions
 from lightjob.cli import load_db
 from lightjob.db import AVAILABLE, PENDING, RUNNING, SUCCESS
 
@@ -47,7 +47,7 @@ def run(nb, where, job_id, budget_hours):
 @click.option('--nb', default=1, required=False)
 def insert(where, nb):
     db = load_db()
-    params_generator = getattr(examples, where)
+    params_generator = getattr(model_definitions, where)
     for i in range(nb):
         params = params_generator(np.random)
         print(params)
@@ -64,7 +64,7 @@ def test(from_json, where, budget_hours):
     if from_json:
         params = json.load(open(from_json))
     else:
-        params = getattr(examples, where)(rng)
+        params = getattr(model_definitions, where)(rng)
         params['optim']['budget_secs'] = budget_hours * 3600 if budget_hours else 60 * 15
     train_model(params, outdir='smalltest')
 

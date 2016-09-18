@@ -15,58 +15,73 @@ from helpers import (
     Show,
     apply_transformers, TimeBudget, BudgetFinishedException,
     LiveHistoryBatch, LiveHistoryEpoch,
-    Time)
+    Time,
+    touch)
 
 import numpy as np
 from tempfile import NamedTemporaryFile
 
 
-def train_model(params, outdir=None):
+def train_model(params, outdir='out'):
     optim_params = params['optim']
     data_params = params['data']
     model_params = params['model']
+    
+    # RETRIEVE PARAMS
 
+    # data params
+
+    preprocessing = data_params['preprocessing']
+    data_preparation_random_state = data_params['seed']
     shuffle = data_params['shuffle']
     valid_ratio = data_params['valid_ratio']
     dataset_name = data_params['name']
-    data_preparation_random_state = data_params['prep_random_state']
-    #zca = data_params.get('use_zca', False)
 
-    augmentation = data_params['augmentation']
-    use_horiz_flip = augmentation['horiz_flip']
-    use_vert_flip = augmentation['vert_flip']
-    shear_range = augmentation['shear_range']
-    zoom_range = augmentation['zoom_range']
-    rotation_range = augmentation['rotation_range']
 
-    seed = optim_params['seed']
-    np.random.seed(seed)
+    # optim params
+
+    nb_epoch = optim_params['nb_epoch']
+
+    algo = optim_params['algo']
+    algo_name = algo['name']
+    algo_params = algo['params']
+
     batch_size = optim_params['batch_size']
     pred_batch_size = optim_params['pred_batch_size']
-    patience = optim_params['patience']
-    patience_loss = optim_params['patience_loss']
-    l1 = optim_params['l1']
-    l2 = optim_params['l2']
-    algo = optim_params['algo']
-    algo_params = optim_params['algo_params']
-    nb_epoch = optim_params['nb_epoch']
-    lr_schedule = optim_params['lr_schedule']
-    lr_schedule_type = lr_schedule['type']
-    lr_schedule_shrink_factor = lr_schedule['shrink_factor']
-    lr_schedule_loss = lr_schedule['loss']
-    lr_schedule_patience = lr_schedule['patience']
-    min_lr = lr_schedule['min_lr']
-    budget_secs = float(optim_params['budget_secs'])
 
+    regularization = optim_params['regularization']
+    l1_coef = regularization['l1']
+    l2_coef = regularization['l2']
+
+        
+    lr_schedule = optim_params['lr_schedule']
+    lr_schedule_name = lr_schedule['name']
+    lr_schedule_params = lr_schedule['params']
+
+    early_stopping = optim_params['early_stopping']
+    early_stopping_name = early_stopping['name']
+    early_stopping_params = early_stopping_params['params']
+
+    checkpoint = optim_params['checkpoint']
+
+    seed = optim_params['seed']
+    budget_secs = float(optim_params['budget_secs'])
+    
+    # model params
     model_name = model_params['name']
     model_params_ = model_params['params']
+    
+    # PREPARE DATA
 
     train_iterator, valid_iterator, test_iterator, info = load_data(
         dataset_name,
         shuffle=shuffle,
         valid_ratio=valid_ratio,
         random_state=data_preparation_random_state)
+    
+    # COMPILE MODEL
 
+    np.random.seed(seed)
     input_shape = info['input_shape']
     nb_outputs = info['nb_outputs']
     model_builder = get_model_builder(model_name)
@@ -80,78 +95,75 @@ def train_model(params, outdir=None):
 
     def loss_fn(y_true, y_pred):
         reg = 0
-        if l1: reg += l1 * sum(K.abs(layer.W).sum() for layer in model.layers if hasattr(layer, 'W'))
-        if l2 : reg += l2 * sum((layer.W**2).sum() for layer in model.layers if hasattr(layer, 'W'))
+        if l1_coef: reg += l1_coef * sum(K.abs(layer.W).sum() for layer in model.layers if hasattr(layer, 'W'))
+        if l2_coef: reg += l2_coef * sum((layer.W**2).sum() for layer in model.layers if hasattr(layer, 'W'))
         return K.categorical_crossentropy(y_pred, y_true) + reg
 
     model.compile(loss=loss_fn,
                   optimizer=optimizer)
 
-    def compute_train_accuracy():
-        train_flow = train_iterator.flow(repeat=False, batch_size=pred_batch_size)
-        #train_flow = apply_transformers(train_flow, [prep])
-        train_acc = compute_metric(
-            model,
-            train_flow,
-            metric='accuracy'
-        )
-        return train_acc
+    # PREPROCESSING
 
-    def compute_valid_accuracy():
-        valid_flow = valid_iterator.flow(repeat=False, batch_size=pred_batch_size)
-        #valid_flow = apply_transformers(valid_flow, [prep])
-        val_acc = compute_metric(
-            model,
-            valid_flow,
-            metric='accuracy'
-        )
-        return val_acc
+    train_tranformers = []
+    test_transformers = []
+    for prep in preprocesing:
+        transformer = build_transformer(prep['name'], prep['params'])
+        only_train = prep.get('only_train', False)
+        if only_train:
+            train_transformers.append(transformer)
+        else:
+            train_transformers.append(transformer)
+            test_transformers.append(transformer)
+    
+    def compute_metric_fn(iterator, transformers, metric):
+        def fn():
+            flow = iterator.flow(repeat=False, batch_size=pred_batch_size)
+            flow = apply_transformers(flow, transformers)
+            value = compute_metric(
+                model,
+                flow,
+                metric=metric
+            )
+            return value
+        return fn
+    
+    ## CALLBACKS
+    callbacks = []
 
-    record_callbacks = [
+    compute_train_accuracy = compute_metric_fn(train_iterator, train_transformers, 'accuracy')
+    compute_valid_accuracy = compute_metric_fn(valid_iterator, test_transformers , 'accuracy')
+    compute_test_accuracy = compute_metric_fn(test_iterator  , test_transformers , 'accuracy')
+    
+    # compute train and valid accuracy callbacks
+
+    callbacks.extend([
         RecordEachEpoch(name='train_acc', compute_fn=compute_train_accuracy),
         RecordEachEpoch(name='val_acc', compute_fn=compute_valid_accuracy)
-    ]
-
-    if outdir is None:
-        model_filename = NamedTemporaryFile(
-            prefix='nnbench_model_', delete=False).name
-    else:
-        try:
-            os.mkdir(outdir)
-        except OSError:
-            pass
-        model_filename = os.path.join(outdir, 'model.pkl')
-    live_epoch_filename = os.path.join(outdir, 'epoch')
-    open(live_epoch_filename, 'w').close()
-    live_batch_filename = os.path.join(outdir, 'batch')
-    open(live_batch_filename, 'w').close()
-
-    callbacks = record_callbacks + [Time()]
-
-    if patience_loss:
-        callbacks.extend([
-            EarlyStopping(monitor=patience_loss,
-                          patience=patience,
-                          verbose=1,
-                          mode='auto'),
-         ])
+    ])
+        
+    # Epoch duration time measure callback
+    callbacks.append(Time())
     
+    # Early stopping callback
+    callbacks.extend(
+        build_early_stopping_callbacks(name=early_stopping_name, params=early_stopping_params, outdir=outdir)
+     )
+
+    # Checkpoint callback
+    model_filename = os.path.join(outdir, 'model.pkl')
     callbacks.append(
-        ModelCheckpoint(model_filename, monitor=patience_loss,
-                        verbose=1,
-                        save_best_only=True if patience_loss else False, 
-                        mode='auto' if patience_loss else 'min')
+        build_model_checkpoint_callback(model_filename=model_filename, params=checkpoint)
     )
-   
-    if lr_schedule_loss:
-        callbacks.extend([
-        LearningRateScheduler(type_=lr_schedule_type,
-                              shrink_factor=lr_schedule_shrink_factor,
-                              loss=lr_schedule_loss,
-                              patience=lr_schedule_patience,
-                              mode='auto',
-                              min_lr=min_lr)
-        ])
+    
+    # lr schedule callback
+    callbacks.extend(
+        build_lr_schedule_callbacks(name=lr_schedule_name, params=lr_schedule_params)
+    )
+    # the rest of callbacks
+    live_epoch_filename = os.path.join(outdir, 'epoch')
+    live_batch_filename = os.path.join(outdir, 'batch')
+    touch(live_epoch_filename)
+    touch(live_batch_filename)
     callbacks.extend([
         Show(),
         LiveHistoryBatch(live_batch_filename),
@@ -159,37 +171,13 @@ def train_model(params, outdir=None):
         TimeBudget(budget_secs)
     ])
 
-    train_flow = train_iterator.flow(repeat=True, batch_size=batch_size)
-
-    data_prep = ImageDataGenerator(
-        #zca_whitening=zca,
-        #featurewise_center=True
-    )
-    data_prep.fit(train_iterator.inputs)
-
-    data_augment = ImageDataGenerator(
-        rotation_range=rotation_range,
-        shear_range=shear_range,
-        zoom_range=zoom_range,
-        horizontal_flip=use_horiz_flip,
-        vertical_flip=use_vert_flip)
-    
-    def prep(X, y, rng):
-        for X_, y_ in data_prep.flow(X, y, batch_size=X.shape[0]):
-            return X_, y_
-
-    def augment(X, y, rng):
-        for X_, y_ in data_augment.flow(X, y, batch_size=X.shape[0]):
-            return X_, y_
-
-    transformers = []
-    transformers.append(augment)
-    #transformers.append(prep)
-    train_flow = apply_transformers(train_flow, transformers, rng=np.random)
-
     print('Number of parameters : {}'.format(model.count_params()))
     nb = sum(1 for layer in model.layers if hasattr(layer, 'W'))
     print('Number of learnable layers : {}'.format(nb))
+
+    train_flow = train_iterator.flow(repeat=True, batch_size=batch_size)
+    train_flow = apply_transformers(train_flow, train_transformers, rng=np.random)
+
     try:
         model.fit_generator(
             train_flow,
@@ -201,16 +189,9 @@ def train_model(params, outdir=None):
         pass
 
     model.load_weights(model_filename)
-    
-    test_flow = test_iterator.flow(repeat=False, batch_size=pred_batch_size)
-    #test_flow = apply_transformers(test_flow, [prep])
-    test_acc = compute_metric(
-        model,
-        test_flow,
-        metric='accuracy')
+    test_acc = compute_test_accuracy()
     model.history.final = {'test_acc': test_acc}
     print('test acc : {}'.format(test_acc))
-
     os.remove(live_batch_filename)
     os.remove(live_epoch_filename)
     return model
@@ -229,3 +210,55 @@ def get_model_builder(model_name):
         return model
     else:
         raise Exception('unknown model : {}'.format(model_name))
+
+def build_transformer(name, params):
+
+    if name == 'augmentation':
+        return build_data_augmentation_transformer(**params)
+    else:
+        raise Exception('Unknown transformer : {}'.format(name))
+
+def build_data_augmentation_transformer(rotation_range=0, 
+                                        shear_range=0, 
+                                        zoom_range=0, 
+                                        horizontal_flip=False, 
+                                        vertical_flip=False,
+                                        width_shift_range=0,
+                                        height_shift_range=0)
+    data_augment = ImageDataGenerator(
+        rotation_range=rotation_range,
+        shear_range=shear_range,
+        zoom_range=zoom_range,
+        horizontal_flip=use_horiz_flip,
+        vertical_flip=use_vert_flip,
+        width_shift_range=width_shift_range,
+        height_shift_range=height_shift_range)
+    
+    def augment(X, y, rng):
+        for X_, y_ in data_augment.flow(X, y, batch_size=X.shape[0]):
+            return X_, y_
+    return augment
+
+def build_early_stopping_callbacks(name, params, outdir='out'):
+    if name == 'basic':
+        patience_loss = params['patience_loss']
+        patience = params['patience']
+        callback = EarlyStopping(monitor=patience_loss,
+                                 patience=patience,
+                                 verbose=1,
+                                 mode='auto')
+        return [callback]
+    elif name == 'none':
+        return []
+
+def build_model_checkpoint_callback(name, params, model_filename='model.pkl'):
+    loss = params['loss']
+    save_best_only = params['save_best_only']
+    return ModelCheckpoint(model_filename, 
+                           monitor=loss,
+                           verbose=1,
+                           save_best_only=save_best_only,
+                           mode='auto' if loss else 'min')
+
+def build_lr_schedule_callback(name, params);
+    return LearningRateScheduler(name=name, params=params)

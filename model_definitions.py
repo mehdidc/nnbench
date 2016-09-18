@@ -5,39 +5,52 @@ import numpy as np
 # Defaults
 ##############################################
 
-
 default_optim = {
-    'algo': 'SGD',
-    'algo_params': {'lr': 0.01, 'momentum': 0.95},
-    'patience': 1000,
-    'patience_loss': 'val_acc',
     'nb_epoch': 1000,
+    'algo': {
+        'name': 'SGD',
+        'params': {'lr': 0.01, 'momentum': 0.95}
+    },
     'batch_size': 128,
     'pred_batch_size': 1000,
-    'l2': 0,
-    'l1': 0,
-    'lr_schedule': {
-        'type': 'decrease_when_stop_improving',
-        'loss': 'val_acc',
-        'shrink_factor': 2,
-        'patience': 10,
-        'min_lr': 0.00001
+    'regularization':{
+        'l2': 0,
+        'l1': 0
     },
+    'lr_schedule':{
+        'name': 'decrease_when_stop_improving',
+        'params': {
+            'loss': 'val_acc',
+            'shrink_factor': 2,
+            'patience': 10,
+            'min_lr': 0.00001
+        }
+    },
+    'early_stopping':{
+        'name': 'basic',
+        'params': {
+            'patience': 1000,
+            'patience_loss': 'val_acc'
+        }
+    },
+    'checkpoint':{
+        'loss': 'val_acc'
+    }
     'seed': 42,
     'budget_secs': 'inf'
 }
 
 ok_optim = default_optim.copy()
-ok_optim['algo_params'] = {'nesterov': True, 'lr': 0.0005, 'momentum': 0.99}
+ok_optim['algo']['params'] = {'nesterov': True, 'lr': 0.0005, 'momentum': 0.99}
 
 torch_blog_optim = default_optim.copy()
-torch_blog_optim['algo_params'] = {'nesterov': True, 'lr': 1., 'momentum': 0.9}
+torch_blog_optim['algo']['params'] = {'nesterov': True, 'lr': 1., 'momentum': 0.9}
 torch_blog_optim['lr_schedule'] = {
-    'type': 'decrease_every',
-    'loss': 'val_acc',
-    'shrink_factor': 2,
-    'patience': 25,
-    'min_lr': 0
+    'name': 'decrease_every',
+    'params': {
+        'shrink_factor': 2,
+        'every': 25,
+    }
 }
 
 
@@ -56,17 +69,23 @@ small_test_cnn = {
     },
     'optim': default_optim,
     'data': {
+        'preprocessing':[
+            {'name': 'augmentation',
+             'params': {
+                'horiz_flip': True,
+                'vert_flip': False,
+                'shear_range': 0,
+                'rotation_range': 0,
+                'zoom_range': 0,
+                "width_shift_range": 0,
+                "height_shift_range": 0
+             }
+           }
+        ],
+        'seed': 1,
         'shuffle': True,
-        'name': 'mnist',
-        'prep_random_state': 1,
         'valid_ratio': None,
-        'augmentation': {
-            'horiz_flip': True,
-            'vert_flip': False,
-            'shear_range': 0,
-            'rotation_range': 0,
-            'zoom_range': 0
-        }
+        'name': 'mnist',
     }
 }
 
@@ -177,8 +196,8 @@ def vgg_D_optim_cifar_24h(rng):
 
 def vgg_D_optim_cifar_24h_no_valid(rng):
     optim = ok_optim.copy()
-    optim['patience_loss'] = 'train_acc'
-    optim['lr_schedule']['loss'] = 'train_acc'
+    optim['early_stopping']['params']['patience_loss'] = 'train_acc'
+    optim['lr_schedule']['params']['loss'] = 'train_acc'
     optim['budget_secs'] = 24 * 3600
     fc = 512
     model = model_vgg_D(fc=[fc, fc])
@@ -190,11 +209,13 @@ def vgg_D_optim_cifar_24h_no_valid(rng):
 def vgg_D_optim_cifar_schedule_24h(rng):
     optim = ok_optim.copy()
     optim['lr_schedule'] = {
-        'type': 'decrease_when_stop_improving',
-        'loss': rng.choice(('train_acc', 'val_acc')),
-        'shrink_factor': rng.choice((2, 5, 10)),
-        'patience': rng.choice((10, 15, 20, 30, 40, 50)),
-        'min_lr': rng.choice((0.000001, 0.00001, 0.0001, 0.001))
+        'name': 'decrease_when_stop_improving',
+        'params':{
+            'loss': rng.choice(('train_acc', 'val_acc')),
+            'shrink_factor': rng.choice((2, 5, 10)),
+            'patience': rng.choice((10, 15, 20, 30, 40, 50)),
+            'min_lr': rng.choice((0.000001, 0.00001, 0.0001, 0.001))
+        }
     }
     optim['budget_secs'] = 24 * 3600
     fc = 512
@@ -205,9 +226,11 @@ def vgg_D_optim_cifar_schedule_24h(rng):
 
 def vgg_D_optim_cifar_torch_blog_24h(rng):
     optim = torch_blog_optim.copy()
-    optim['algo_params'] = {'nesterov': bool(rng.choice((True, False))),
-                            'lr':  rng.choice((0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1)),
-                            'momentum': 0.9}
+    optim['algo']['params'] = { 
+          'nesterov': bool(rng.choice((True, False))),
+          'lr':  rng.choice((0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1)),
+          'momentum': 0.9
+    }
     optim['budget_secs'] = 24 * 3600
     fc = 512
     model = model_vgg_D(fc=[fc, fc])
@@ -219,11 +242,13 @@ def vgg_D_optim_cifar_torch_blog_24h(rng):
 def vgg_A_optim_cifar_24h(rng):
     optim = ok_optim.copy()
     optim['lr_schedule'] = {
-        'type': 'decrease_when_stop_improving',
-        'loss': rng.choice(('train_acc', 'val_acc')),
-        'shrink_factor': rng.choice((2, 5, 10)),
-        'patience': rng.choice((10, 15, 20, 30, 40, 50)),
-        'min_lr': rng.choice((0.000001, 0.00001, 0.0001, 0.001))
+        'name': 'decrease_when_stop_improving',
+        'params':{
+            'loss': rng.choice(('train_acc', 'val_acc')),
+            'shrink_factor': rng.choice((2, 5, 10)),
+            'patience': rng.choice((10, 15, 20, 30, 40, 50)),
+            'min_lr': rng.choice((0.000001, 0.00001, 0.0001, 0.001))
+        }
     }
     optim['budget_secs'] = 24 * 3600
     fc = rng.choice((64, 128, 256, 512, 800))
@@ -234,11 +259,13 @@ def vgg_A_optim_cifar_24h(rng):
 def vgg_E_optim_cifar_24h(rng):
     optim = ok_optim.copy()
     optim['lr_schedule'] = {
-        'type': 'decrease_when_stop_improving',
-        'loss': rng.choice(('train_acc', 'val_acc')),
-        'shrink_factor': rng.choice((2, 5, 10)),
-        'patience': rng.choice((10, 15, 20, 30, 40, 50)),
-        'min_lr': rng.choice((0.000001, 0.00001, 0.0001, 0.001))
+        'name': 'decrease_when_stop_improving',
+        'params':{
+            'loss': rng.choice(('train_acc', 'val_acc')),
+            'shrink_factor': rng.choice((2, 5, 10)),
+            'patience': rng.choice((10, 15, 20, 30, 40, 50)),
+            'min_lr': rng.choice((0.000001, 0.00001, 0.0001, 0.001))
+        }
     }
     lr = rng.choice((0.1, 0.01, 0.05, 0.001, 0.005, 0.0001, 0.0005))
     optim['algo_params'] = {'nesterov': True, 'lr':lr, 'momentum': 0.99}
@@ -317,41 +344,14 @@ def take_bests_on_validation_set_and_use_full_training_data(rng):
     params = j['content'].copy()
     optim = params['optim']
     optim['nb_epoch'] = nb_epochs
-    optim['patience_loss'] = None
-    optim['lr_schedule']['loss'] = None
-    
+    optim['early_stopping']['name'] = 'none'
+    optim['early_stopping']['params'] = {}
+    optim['checkpoint'] = {'save_best_only': False, 'loss': None}
+    if 'loss' in optim['lr_schedule']:
+        optim['lr_schedule']['loss'] = 'train_acc'
     data = params['data']
     data['valid_ratio'] = 0
     return params
-
-def take_bests_on_validation_set_and_apply_zca(rng):
-    from lightjob.cli import load_db
-    from lightjob.db import SUCCESS
-    db = load_db()
-    jobs = db.jobs_with(state=SUCCESS)
-    jobs = list(jobs)
-    db.close()
-
-    jobs = filter(lambda j:'val_acc' in j['results'], jobs)
-    jobs = sorted(jobs, key=lambda j:(j['results']['val_acc'][-1]), reverse=True)
-
-    j = rng.choice(jobs[0:10])
-    print(j['results']['val_acc'][-1])
-    nb_epochs = 1 + np.argmax(j['results']['val_acc'])
-    params = j['content'].copy()
-    print(params['data'])
-    params['data']['use_zca'] = True
-    params['optim']['algo'] = 'adam'
-    params['optim']['algo_params'] = {'lr': 0.01}
-    #optim = params['optim']
-    #optim['nb_epoch'] = nb_epochs
-    #optim['patience_loss'] = None
-    #optim['lr_schedule']['loss'] = None
-    #data = params['data']
-    #data['valid_ratio'] = 0
-    return params
-
-
 
 ##############################################
 # General subparts
@@ -368,8 +368,10 @@ def random_model(rng):
 def random_optim(rng):
     optim = deepcopy(default_optim)
     algo = rng.choice(('Adam', 'RMSprop', 'SGD', 'Adadelta'))
-    optim['algo'] = algo
 
+    optim['algo'] = {}
+    optim['algo']['name'] = algo
+    
     lr = rng.choice((0.1, 0.01, 0.05, 0.001, 0.005, 0.0001, 0.0005))
     algo_params = {}
     algo_params['lr'] = lr
@@ -377,7 +379,7 @@ def random_optim(rng):
         momentum = rng.choice((0.5, 0.9, 0.95, 0.99, 0))
         nesterov = bool(rng.choice((True, False)))
         algo_params.update({'momentum': momentum, 'nesterov': nesterov})
-    optim['algo_params'] = algo_params
+    optim['algo']['params'] = algo_params
     return optim
 
 
@@ -391,4 +393,6 @@ def random_data(rng, datasets=('mnist', 'cifar10')):
                 'vert_flip': False,
                 'shear_range': 0,
                 'rotation_range': 0,
+                "width_shift_range": 0,
+                'height_shift_range': 0,
                 'zoom_range': 0}}
