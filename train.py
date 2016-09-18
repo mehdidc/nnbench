@@ -183,7 +183,7 @@ def train_model(params, outdir=None):
             return X_, y_
 
     transformers = []
-    #transformers.append(augment)
+    transformers.append(augment)
     #transformers.append(prep)
     train_flow = apply_transformers(train_flow, transformers, rng=np.random)
 

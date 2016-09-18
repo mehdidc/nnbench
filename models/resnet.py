@@ -28,6 +28,21 @@ def _conv_bn_relu(nb_filter, nb_row, nb_col, subsample=(1, 1)):
 
     return f
 
+def _bn_relu(x):
+    x = BatchNormalization(mode=2, axis=1)(x)
+    return Activation("relu")(x)
+
+# Helper to build a conv -> BN 
+def _conv_bn(nb_filter, nb_row, nb_col, subsample=(1, 1)):
+    def f(input):
+        conv = Convolution2D(nb_filter=nb_filter, nb_row=nb_row, nb_col=nb_col, subsample=subsample,
+                             init="he_normal", border_mode="same")(input)
+        norm = BatchNormalization(mode=2, axis=1)(conv)
+        return norm
+
+    return f
+
+
 
 # Helper to build a BN -> relu -> conv block
 # This is an improved scheme proposed in http://arxiv.org/pdf/1603.05027v2.pdf
@@ -59,8 +74,8 @@ def _bottleneck(nb_filters, init_subsample=(1, 1)):
 # Follows improved proposed scheme in http://arxiv.org/pdf/1603.05027v2.pdf
 def _basic_block(nb_filters, init_subsample=(1, 1)):
     def f(input):
-        conv1 = _bn_relu_conv(nb_filters, 3, 3, subsample=init_subsample)(input)
-        residual = _bn_relu_conv(nb_filters, 3, 3)(conv1)
+        conv1 = _conv_bn_relu(nb_filters, 3, 3, subsample=init_subsample)(input)
+        residual = _conv_bn_relu(nb_filters, 3, 3)(conv1)
         return _shortcut(input, residual)
 
     return f
@@ -83,8 +98,9 @@ def _shortcut(input, residual):
                                  bias=False,
                                  init="he_normal", border_mode="valid")(input)
 
-    return merge([shortcut, residual], mode="sum")
-
+    shortcut =  merge([shortcut, residual], mode="sum")
+    shortcut = _bn_relu(shortcut)
+    return shortcut
 
 # Builds a residual block with repeating bottleneck blocks.
 def _residual_block(block_function, nb_filters, repetations, is_first_layer=False):
@@ -113,7 +129,6 @@ def resnet(hp, input_shape=(3, 224, 224), nb_outputs=10):
     for i in range(nb_blocks):
         x = _residual_block(block_fn, nb_filters=nb_filters[i], repetations=size_blocks[i], is_first_layer=(i==0))(x)
     # Classifier block
-    
     x = GlobalAveragePooling2D()(x)
     x = Dense(output_dim=nb_outputs, init="he_normal", activation="softmax")(x)
     out = x
@@ -123,24 +138,9 @@ def resnet(hp, input_shape=(3, 224, 224), nb_outputs=10):
 def main():
     import time
     start = time.time()
-    model = resnet()
-    duration = time.time() - start
-    print "{} s to make model".format(duration)
-
-    start = time.time()
-    model.output
-    duration = time.time() - start
-    print "{} s to get output".format(duration)
-
-    start = time.time()
-    model.compile(loss="categorical_crossentropy", optimizer="sgd")
-    duration = time.time() - start
-    print "{} s to get compile".format(duration)
-
-    current_dir = os.path.dirname(os.path.realpath(__file__))
-    model_path = os.path.join(current_dir, "resnet_50.png")
-    plot(model, to_file=model_path, show_shapes=True)
-
+    model = resnet({'nb_filters': [16, 32, 64], 'size_blocks': [5, 5, 5], 'block': 'basic'}, input_shape=(3, 32, 32))
+    print(model.summary())
+    plot(model, to_file='net.svg', show_shapes=True)
 
 if __name__ == '__main__':
     main()

@@ -161,7 +161,6 @@ class LearningRateScheduler(keras.callbacks.Callback):
                 new_lr = old_lr / 10.
             else:
                 new_lr = old_lr
-            print(epoch, new_lr, old_lr)
             #if epoch < 80:
             #    new_lr = 0.1
             #elif epoch < 120:
