@@ -17,7 +17,7 @@ from keras.layers.convolutional import (
 from keras.layers.normalization import BatchNormalization
 from keras.utils.visualize_util import plot
 
-MODE = 0 # BN mode
+MODE = 2 # BN mode, MODE 2 is 4 time faster than MODE 0
 
 # Helper to build a conv -> BN -> relu block
 def _conv_bn_relu(nb_filter, nb_row, nb_col, subsample=(1, 1)):

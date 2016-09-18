@@ -9,7 +9,7 @@
             }
         }, 
         "batch_size": 128, 
-        "pred_batch_size": 1000, 
+        "pred_batch_size": 1024, 
         "regularization":{
             "l2": 0.0001,
             "l1": 0
@@ -56,7 +56,7 @@
         ],
         "seed": 1, 
         "shuffle": true, 
-        "valid_ratio": null,
+        "valid_ratio": 0.1,
         "name": "cifar10"
     }
 }

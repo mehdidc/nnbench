@@ -1,3 +1,4 @@
+import numpy as np
 from data import load_data
 
 from keras import optimizers
@@ -18,7 +19,6 @@ from helpers import (
     Time,
     touch)
 
-import numpy as np
 from tempfile import NamedTemporaryFile
 
 
@@ -138,8 +138,8 @@ def train_model(params, outdir='out'):
     callbacks.append(Time())
 
     callbacks.extend([
-        #RecordEachEpoch(name='train_acc', compute_fn=compute_train_accuracy),
-        #RecordEachEpoch(name='val_acc', compute_fn=compute_valid_accuracy)
+        RecordEachEpoch(name='train_acc', compute_fn=compute_train_accuracy),
+        RecordEachEpoch(name='val_acc', compute_fn=compute_valid_accuracy)
     ])
         
     # Epoch duration time measure callback
@@ -175,7 +175,7 @@ def train_model(params, outdir='out'):
     print('Number of parameters : {}'.format(model.count_params()))
     nb = sum(1 for layer in model.layers if hasattr(layer, 'W'))
     print('Number of learnable layers : {}'.format(nb))
-
+    
     train_flow = train_iterator.flow(repeat=True, batch_size=batch_size)
     train_flow = apply_transformers(train_flow, train_transformers, rng=np.random)
 
@@ -185,7 +185,8 @@ def train_model(params, outdir='out'):
             nb_epoch=nb_epoch,
             samples_per_epoch=info['nb_train_samples'],
             callbacks=callbacks,
-            verbose=2)
+            max_q_size=10,
+            verbose=0)
     except BudgetFinishedException:
         pass
 

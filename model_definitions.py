@@ -41,10 +41,10 @@ default_optim = {
     'budget_secs': 'inf'
 }
 
-ok_optim = default_optim.copy()
+ok_optim = deepcopy(default_optim)
 ok_optim['algo']['params'] = {'nesterov': True, 'lr': 0.0005, 'momentum': 0.99}
 
-torch_blog_optim = default_optim.copy()
+torch_blog_optim = deepcopy(default_optim)
 torch_blog_optim['algo']['params'] = {'nesterov': True, 'lr': 1., 'momentum': 0.9}
 torch_blog_optim['lr_schedule'] = {
     'name': 'decrease_every',
@@ -91,15 +91,14 @@ small_test_cnn = {
     }
 }
 
-small_test_fc = deepcopy(small_test_cnn)
-small_test_fc['model'] = {
-    'name': 'fc',
+small_test_mlp = deepcopy(small_test_cnn)
+small_test_mlp['model'] = {
+    'name': 'mlp',
     'params': {
-        'nb_hidden': [500, 500],
         'activation': 'relu',
+        'nb_hidden_units': [100]
     }
 }
-
 
 ##############################################
 # VGG
@@ -197,7 +196,7 @@ def vgg_D_optim_cifar_24h(rng):
 
 
 def vgg_D_optim_cifar_24h_no_valid(rng):
-    optim = ok_optim.copy()
+    optim = deepcopy(ok_optim)
     optim['early_stopping']['params']['patience_loss'] = 'train_acc'
     optim['lr_schedule']['params']['loss'] = 'train_acc'
     optim['budget_secs'] = 24 * 3600
@@ -209,7 +208,7 @@ def vgg_D_optim_cifar_24h_no_valid(rng):
 
 
 def vgg_D_optim_cifar_schedule_24h(rng):
-    optim = ok_optim.copy()
+    optim = deepcopy(ok_optim)
     optim['lr_schedule'] = {
         'name': 'decrease_when_stop_improving',
         'params':{
@@ -227,7 +226,7 @@ def vgg_D_optim_cifar_schedule_24h(rng):
 
 
 def vgg_D_optim_cifar_torch_blog_24h(rng):
-    optim = torch_blog_optim.copy()
+    optim = deepcopy(torch_blog_optim)
     optim['algo']['params'] = { 
           'nesterov': bool(rng.choice((True, False))),
           'lr':  rng.choice((0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1)),
@@ -241,7 +240,7 @@ def vgg_D_optim_cifar_torch_blog_24h(rng):
 
 
 def vgg_A_optim_cifar_24h(rng):
-    optim = ok_optim.copy()
+    optim = deepcopy(ok_optim)
     optim['lr_schedule'] = {
         'name': 'decrease_when_stop_improving',
         'params':{
@@ -258,7 +257,7 @@ def vgg_A_optim_cifar_24h(rng):
     return {'optim': optim, 'model': model, 'data': data}
 
 def vgg_E_optim_cifar_24h(rng):
-    optim = ok_optim.copy()
+    optim = deepcopy(ok_optim)
     optim['lr_schedule'] = {
         'name': 'decrease_when_stop_improving',
         'params':{
@@ -296,9 +295,31 @@ def default_densenet_model(rng):
     }
 
 def default_densenet(rng):
-    optim = ok_optim.copy()
+    optim = deepcopy(ok_optim)
     optim['budget_secs'] = 24 * 3600
     model = default_densenet_model(rng)
+    data = random_data(rng, datasets=('cifar10',))
+    return {'optim': optim, 'model': model, 'data': data}
+
+
+##############################################
+# Squeezenet 
+##############################################
+
+def default_squeezenet_model(rng):
+    return {'name': 'squeezenet',
+            
+            'params':{
+                'squeeze_filters_size': [16, 16, 32,  32,  48,  48,  64, 64    ],
+                'expand_filters_size':  [64, 64, 128, 128, 192, 192, 256, 256  ],
+                'pool':                 [0,  0,  1,   0,    0,  1,   0,   0,  1],
+                'dropout': 0.5
+            }}
+
+def default_squeezenet(rng):
+    optim = deepcopy(ok_optim)
+    optim['budget_secs'] = 24 * 3600
+    model = default_squeezenet_model(rng)
     data = random_data(rng, datasets=('cifar10',))
     return {'optim': optim, 'model': model, 'data': data}
 
