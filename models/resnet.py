@@ -140,6 +140,8 @@ def main():
     start = time.time()
     model = resnet({'nb_filters': [16, 32, 64], 'size_blocks': [5, 5, 5], 'block': 'basic'}, input_shape=(3, 32, 32))
     print(model.summary())
+    nb = sum(1 for layer in model.layers if hasattr(layer, 'W'))
+    print('Number of learnable layers : {}'.format(nb))
     plot(model, to_file='resnet.svg', show_shapes=True)
 
 if __name__ == '__main__':

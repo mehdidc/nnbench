@@ -90,4 +90,6 @@ if __name__ == '__main__':
     }
     model = vgg(hp, input_shape=(3, 224, 224), nb_outputs=1000)
     print(model.summary())
+    nb = sum(1 for layer in model.layers if hasattr(layer, 'W'))
+    print('Number of learnable layers : {}'.format(nb))
     plot(model, to_file='vgg.svg', show_shapes=True)
