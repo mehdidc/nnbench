@@ -73,6 +73,13 @@ def build_iterators(train_X_full, train_y_full, test_X, test_y,
         rng.shuffle(indices)
         train_X = train_X_full[default_validation_size:]
         train_y = train_y_full[default_validation_size:]
+        
+        # to delete after
+        train_X_flip = train_X[:,:,:,::-1]
+        train_y_flip = train_y
+        train_X = np.concatenate((train_X, train_X_flip),axis=0)
+        train_y = np.concatenate((train_y, train_y_flip),axis=0)
+
         valid_X = train_X_full[0:default_validation_size]
         valid_y = train_y_full[0:default_validation_size]
 

@@ -328,6 +328,15 @@ def default_squeezenet(rng):
 # Random ones
 ##############################################
 
+def random(rng):
+    optim = random_optim(rng)
+    model = random_model(rng)
+    data = random_data(rng)
+    data['valid_ratio'] = 0.1
+    optim['budget_secs'] = 3600 * 24
+    return {'optim': optim, 'model': model, 'data': data}
+
+
 def mini_random(rng):
     optim = random_optim(rng)
     model = random_model(rng)

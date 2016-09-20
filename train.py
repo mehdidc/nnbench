@@ -19,8 +19,9 @@ from helpers import (
     Time,
     touch)
 
-from tempfile import NamedTemporaryFile
 
+from tempfile import NamedTemporaryFile
+import json
 
 def train_model(params, outdir='out'):
     optim_params = params['optim']
@@ -101,12 +102,17 @@ def train_model(params, outdir='out'):
     model.compile(loss=loss_fn,
                   optimizer=optimizer)
 
+    json_string = model.to_json()
+    s = json.dumps(json.loads(json_string), indent=4)
+    with open(os.path.join(outdir, 'model.json'), 'w') as fd:
+        fd.write(s)
+
     # PREPROCESSING
 
     train_transformers = []
     test_transformers = []
     for prep in preprocessing:
-        transformer = build_transformer(prep['name'], prep['params'])
+        transformer = build_transformer(prep['name'], prep['params'], inputs=train_iterator.inputs)
         only_train = prep.get('only_train', False)
         if only_train:
             train_transformers.append(transformer)
@@ -174,6 +180,8 @@ def train_model(params, outdir='out'):
 
     print('Number of parameters : {}'.format(model.count_params()))
     nb = sum(1 for layer in model.layers if hasattr(layer, 'W'))
+    nb_W_params = sum(np.prod(layer.W.get_value().shape) for layer in model.layers if hasattr(layer, 'W'))
+    print('Number of weight parameters : {}'.format(nb_W_params))
     print('Number of learnable layers : {}'.format(nb))
     
     train_flow = train_iterator.flow(repeat=True, batch_size=batch_size)
@@ -194,8 +202,6 @@ def train_model(params, outdir='out'):
     test_acc = compute_test_accuracy()
     model.history.final = {'test_acc': test_acc}
     print('test acc : {}'.format(test_acc))
-    os.remove(live_batch_filename)
-    os.remove(live_epoch_filename)
     return model
 
 
@@ -213,14 +219,30 @@ def get_model_builder(model_name):
     else:
         raise Exception('unknown model : {}'.format(model_name))
 
-def build_transformer(name, params):
+def build_transformer(name, params, inputs=None):
 
     if name == 'augmentation':
         return build_data_augmentation_transformer(**params)
     elif name == 'padcrop':
         return build_padcrop_transformer(**params)
+    elif name == 'standardization':
+        return build_standardization_transformer(inputs=inputs, **params)
     else:
         raise Exception('Unknown transformer : {}'.format(name))
+
+def build_standardization_transformer(inputs):
+    st = ImageDataGenerator(
+        featurewise_center=True
+    )
+    st.fit(inputs)
+
+    def fn(X, y, rng):
+        for X_, y_ in st.flow(X, y, batch_size=X.shape[0]):
+            #from skimage.io import imsave
+            #imsave('out.png', X[0].transpose((1, 2, 0)))
+            return X_, y_
+    return fn
+
 
 def build_data_augmentation_transformer(rotation_range=0, 
                                         shear_range=0, 

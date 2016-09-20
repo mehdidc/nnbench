@@ -43,8 +43,6 @@ def _conv_bn(nb_filter, nb_row, nb_col, subsample=(1, 1)):
 
     return f
 
-
-
 # Helper to build a BN -> relu -> conv block
 # This is an improved scheme proposed in http://arxiv.org/pdf/1603.05027v2.pdf
 def _bn_relu_conv(nb_filter, nb_row, nb_col, subsample=(1, 1)):
@@ -69,18 +67,37 @@ def _bottleneck(nb_filters, init_subsample=(1, 1)):
 
     return f
 
-
-# Basic 3 X 3 convolution blocks.
-# Use for resnet with layers <= 34
-# Follows improved proposed scheme in http://arxiv.org/pdf/1603.05027v2.pdf
+# conv-bn-relu-conv-bn-relu-sum-bn-relu
+#like Lasagne : https://github.com/Lasagne/Recipes/blob/master/papers/deep_residual_learning/Deep_Residual_Learning_CIFAR-10.py
 def _basic_block(nb_filters, init_subsample=(1, 1)):
     def f(input):
         conv1 = _conv_bn_relu(nb_filters, 3, 3, subsample=init_subsample)(input)
         residual = _conv_bn_relu(nb_filters, 3, 3)(conv1)
-        return _shortcut(input, residual)
-
+        shortcut = _shortcut(input, residual)
+        shortcut = _bn_relu(shortcut)
+        return shortcut
     return f
 
+#conv-bn-relu-conv-bn-sum-relu
+# Like original paper reference 
+# https://raw.githubusercontent.com/torch/torch.github.io/master/blog/_posts/images/resnets_modelvariants.png
+def _ref_block(nb_filters, init_subsample=(1, 1)):
+    def f(input):
+        conv1 = _conv_bn_relu(nb_filters, 3, 3, subsample=init_subsample)(input)
+        residual = _conv_bn(nb_filters, 3, 3)(conv1)
+        shortcut = _shortcut(input, residual)
+        shortcut = Activation('relu')(shortcut)
+        return shortcut
+    return f
+
+#conv-bn-relu-conv-bn-sum
+# Variant propopsed by the blog
+def _refnorelu_block(nb_filters, init_subsample=(1, 1)):
+    def f(input):
+        conv1 = _conv_bn_relu(nb_filters, 3, 3, subsample=init_subsample)(input)
+        residual = _conv_bn(nb_filters, 3, 3)(conv1)
+        return _shortcut(input, residual)
+    return f
 
 # Adds a shortcut between input and residual block and merges them with "sum"
 def _shortcut(input, residual):
@@ -100,7 +117,6 @@ def _shortcut(input, residual):
                                  init="he_normal", border_mode="valid")(input)
 
     shortcut =  merge([shortcut, residual], mode="sum")
-    shortcut = _bn_relu(shortcut)
     return shortcut
 
 # Builds a residual block with repeating bottleneck blocks.
@@ -118,7 +134,7 @@ def _residual_block(block_function, nb_filters, repetations, is_first_layer=Fals
 def resnet(hp, input_shape=(3, 224, 224), nb_outputs=10):
     size_blocks = hp['size_blocks']
     nb_filters = hp['nb_filters']
-    block_fn = {'bottleneck': _bottleneck, 'basic': _basic_block}[hp['block']]
+    block_fn = {'bottleneck': _bottleneck, 'basic': _basic_block, "reference": _ref_block, "reference_norelu": _refnorelu_block}[hp['block']]
     assert len(size_blocks) == len(nb_filters)
     nb_blocks = len(size_blocks)
 
@@ -139,7 +155,7 @@ def resnet(hp, input_shape=(3, 224, 224), nb_outputs=10):
 def main():
     import time
     start = time.time()
-    model = resnet({'nb_filters': [16, 32, 64], 'size_blocks': [5, 5, 5], 'block': 'basic'}, input_shape=(3, 32, 32))
+    model = resnet({'nb_filters': [16, 32, 64], 'size_blocks': [5, 5, 5], 'block': 'reference'}, input_shape=(3, 32, 32))
     print(model.summary())
     nb = sum(1 for layer in model.layers if hasattr(layer, 'W'))
     print('Number of learnable layers : {}'.format(nb))

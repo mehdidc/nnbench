@@ -1,0 +1,68 @@
+{
+    "optim": {
+        "nb_epoch": 200, 
+        "algo": {
+            "name": "SGD",
+            "params": {
+                "lr": 0.1,
+                "momentum": 0.9
+            }
+        }, 
+        "batch_size": 128, 
+        "pred_batch_size": 1024, 
+        "regularization":{
+            "l2": 0.0001,
+            "l1": 0
+        },
+        "lr_schedule": {
+            "name": "manual", 
+            "params":{
+                "schedule":[
+                    {"range": [0, 40], "lr": 0.1},
+                    {"range": [41, 60], "lr": 0.01},
+                    {"range": [61, 1000], "lr": 0.001}
+                ]
+            }
+        }, 
+        "early_stopping":{
+            "name": "none",
+            "params":{
+            }
+        },
+        "checkpoint":{
+            "loss": "val_acc",
+            "save_best_only": true
+        },
+        "seed": 42, 
+        "budget_secs": 86400
+    }, 
+    "model": {
+        "params": {
+            "size_blocks":[5,  5,  5],
+            "nb_filters": [16, 32, 64],
+            "block": "basic"
+        }, 
+        "name": "resnet"
+    }, 
+    "data": {
+        "preprocessing":[
+            {"name": "augmentation",
+             "only_train": true,
+             "params": {
+                "horizontal_flip": true,
+                "vertical_flip": false,
+                "shear_range": 0,
+                "rotation_range": 0,
+                "zoom_range": 0,
+                "width_shift_range": 0,
+                "height_shift_range": 0
+             }
+           },
+           {"name": "padcrop", "params":{"pad": 4}, "only_train": true}
+        ],
+        "seed": 1, 
+        "shuffle": true, 
+        "valid_ratio": 0.1,
+        "name": "cifar10"
+    }
+}
