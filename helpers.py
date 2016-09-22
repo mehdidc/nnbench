@@ -91,7 +91,6 @@ def compute_metric_on(y_pred, y, metric='accuracy'):
     else:
         raise Exception('Unknown metric : {}'.format(metric))
 
-
 class RecordEachEpoch(keras.callbacks.Callback):
 
     def __init__(self, name, compute_fn):

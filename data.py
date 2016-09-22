@@ -82,7 +82,6 @@ def build_iterators(train_X_full, train_y_full, test_X, test_y,
     train_X = np.concatenate((train_X, train_X_flip),axis=0)
     train_y = np.concatenate((train_y, train_y_flip),axis=0)
 
-
     print('Shape of training set   : {}'.format(train_X.shape))
     print('Shape of validation set : {}'.format(valid_X.shape))
     print('Shape of test set       : {}'.format(test_X.shape))

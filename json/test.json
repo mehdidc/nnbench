@@ -1,6 +1,6 @@
 {
     "optim": {
-        "nb_epoch": 1, 
+        "nb_epoch": 50, 
         "algo": {
             "name": "SGD",
             "params": {
@@ -32,12 +32,10 @@
         "budget_secs": 86400
     }, 
     "model": {
-        "name": "squeezenet",
+        "name": "mlp",
         "params": {
-            "squeeze_filters_size": [16, 16, 32,  32,  48,  48,  64, 64    ],
-            "expand_filters_size":  [64, 64, 128, 128, 192, 192, 256, 256  ],
-            "pool":                 [0,  0,  1,   0,    0,  1,   0,   0,  1],
-            "dropout": 0.5
+            "nb_hidden_units": [100],
+            "activation": "relu"
         }, 
         "loss": "mean_squared_error",
         "metrics": ["mean_squared_error"]
