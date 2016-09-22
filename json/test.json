@@ -1,5 +1,7 @@
 {
     "optim": {
+        "loss": "categorical_crossentropy",
+        "metrics": ["accuracy"],
         "nb_epoch": 50, 
         "algo": {
             "name": "SGD",

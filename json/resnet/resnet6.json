@@ -1,5 +1,7 @@
 {
     "optim": {
+        "loss": "categorical_crossentropy",
+        "metrics": ["accuracy"],
         "nb_epoch": 200, 
         "algo": {
             "name": "SGD",
@@ -30,7 +32,7 @@
             }
         },
         "checkpoint":{
-            "loss": "val_acc",
+            "loss": "val_accuracy",
             "save_best_only": true
         },
         "seed": 42, 

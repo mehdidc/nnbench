@@ -1,6 +1,9 @@
 {
+    "comment": "batchnorm mode0 + cross entropy fix", 
     "optim": {
-        "nb_epoch": 200, 
+        "loss": "categorical_crossentropy",
+        "metrics": ["accuracy"],
+        "nb_epoch": 100, 
         "algo": {
             "name": "SGD",
             "params": {
@@ -15,8 +18,13 @@
             "l1": 0
         },
         "lr_schedule": {
-            "name": "cifar", 
+            "name": "manual", 
             "params":{
+                "schedule":[
+                    {"range": [0, 40], "lr": 0.1},
+                    {"range": [41, 60], "lr": 0.01},
+                    {"range": [61, 1000], "lr": 0.001}
+                ]
             }
         }, 
         "early_stopping":{
@@ -25,8 +33,8 @@
             }
         },
         "checkpoint":{
-            "loss": null,
-            "save_best_only": false
+            "loss": "val_accuracy",
+            "save_best_only": true
         },
         "seed": 42, 
         "budget_secs": 86400
@@ -43,22 +51,11 @@
     "data": {
         "preprocessing":[
             {"name": "standardization", "params": {}},
-            {"name": "augmentation",
-             "only_train": true,
-             "params": {
-                "horizontal_flip": true,
-                "vertical_flip": false,
-                "shear_range": 0,
-                "rotation_range": 0,
-                "zoom_range": 0,
-                "width_shift_range": 0,
-                "height_shift_range": 0
-             }
-           }
+            {"name": "padcrop", "params":{"pad": 4}, "only_train": true}
         ],
         "seed": 1, 
         "shuffle": true, 
-        "valid_ratio": 0,
+        "valid_ratio": 0.1,
         "name": "cifar10"
     }
 }

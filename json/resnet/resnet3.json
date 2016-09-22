@@ -1,5 +1,7 @@
 {
     "optim": {
+        "loss": "categorical_crossentropy",
+        "metrics": ["accuracy"],
         "nb_epoch": 200, 
         "algo": {
             "name": "SGD",
@@ -15,8 +17,13 @@
             "l1": 0
         },
         "lr_schedule": {
-            "name": "cifar", 
+            "name": "manual", 
             "params":{
+                "schedule":[
+                    {"range": [0, 40], "lr": 0.1},
+                    {"range": [41, 60], "lr": 0.01},
+                    {"range": [61, 1000], "lr": 0.001}
+                ]
             }
         }, 
         "early_stopping":{
@@ -25,7 +32,7 @@
             }
         },
         "checkpoint":{
-            "loss": "val_acc",
+            "loss": "val_accuracy",
             "save_best_only": true
         },
         "seed": 42, 
@@ -53,7 +60,8 @@
                 "width_shift_range": 0,
                 "height_shift_range": 0
              }
-           }
+           },
+           {"name": "padcrop", "params":{"pad": 4}, "only_train": true}
         ],
         "seed": 1, 
         "shuffle": true, 

@@ -1,5 +1,7 @@
 {
     "optim": {
+        "loss": "categorical_crossentropy",
+        "metrics": ["accuracy"],
         "nb_epoch": 200, 
         "algo": {
             "name": "SGD",
@@ -25,8 +27,8 @@
             }
         },
         "checkpoint":{
-            "loss": "val_acc",
-            "save_best_only": true
+            "loss": null,
+            "save_best_only": false
         },
         "seed": 42, 
         "budget_secs": 86400
@@ -58,7 +60,7 @@
         ],
         "seed": 1, 
         "shuffle": true, 
-        "valid_ratio": 0.1,
+        "valid_ratio": 0,
         "name": "cifar10"
     }
 }
