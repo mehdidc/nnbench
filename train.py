@@ -47,6 +47,9 @@ def train_model(params, outdir='out'):
     algo_name = algo['name']
     algo_params = algo['params']
 
+    loss_function = optim_params['loss']
+    metrics = optim_params['metrics']
+
     batch_size = optim_params['batch_size']
     pred_batch_size = optim_params['pred_batch_size']
 
@@ -72,8 +75,6 @@ def train_model(params, outdir='out'):
     # model params
     model_name = model_params['name']
     model_params_ = model_params['params']
-    loss_function = model_params['loss']
-    metrics = model_params['metrics']
     
     # PREPARE DATA
 

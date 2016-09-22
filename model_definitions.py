@@ -7,6 +7,8 @@ import numpy as np
 
 default_optim = {
     'nb_epoch': 1000,
+    'loss': 'categorical_crossentropy',
+    'metrics': ['accuracy'],
     'algo': {
         'name': 'SGD',
         'params': {'lr': 0.01, 'momentum': 0.95}
@@ -20,7 +22,7 @@ default_optim = {
     'lr_schedule':{
         'name': 'decrease_when_stop_improving',
         'params': {
-            'loss': 'val_acc',
+            'loss': 'val_accuracy',
             'shrink_factor': 2,
             'patience': 10,
             'min_lr': 0.00001
@@ -30,11 +32,11 @@ default_optim = {
         'name': 'basic',
         'params': {
             'patience': 1000,
-            'patience_loss': 'val_acc'
+            'patience_loss': 'val_accuracy'
         }
     },
     'checkpoint':{
-        'loss': 'val_acc',
+        'loss': 'val_accuracy',
         'save_best_only': True
     },
     'seed': 42,
@@ -86,7 +88,7 @@ small_test_cnn = {
         ],
         'seed': 1,
         'shuffle': True,
-        'valid_ratio': None, # meaning use default
+        'val_ratio': None, # meaning use default
         'name': 'mnist',
     }
 }
@@ -197,13 +199,13 @@ def vgg_D_optim_cifar_24h(rng):
 
 def vgg_D_optim_cifar_24h_no_valid(rng):
     optim = deepcopy(ok_optim)
-    optim['early_stopping']['params']['patience_loss'] = 'train_acc'
-    optim['lr_schedule']['params']['loss'] = 'train_acc'
+    optim['early_stopping']['params']['patience_loss'] = 'train_accuracy'
+    optim['lr_schedule']['params']['loss'] = 'train_accuracy'
     optim['budget_secs'] = 24 * 3600
     fc = 512
     model = model_vgg_D(fc=[fc, fc])
     data = random_data(rng, datasets=('cifar10',))
-    data['valid_ratio'] = 0
+    data['val_ratio'] = 0
     return {'optim': optim, 'model': model, 'data': data}
 
 
@@ -212,7 +214,7 @@ def vgg_D_optim_cifar_schedule_24h(rng):
     optim['lr_schedule'] = {
         'name': 'decrease_when_stop_improving',
         'params':{
-            'loss': rng.choice(('train_acc', 'val_acc')),
+            'loss': rng.choice(('train_accuracy', 'val_accuracy')),
             'shrink_factor': rng.choice((2, 5, 10)),
             'patience': rng.choice((10, 15, 20, 30, 40, 50)),
             'min_lr': rng.choice((0.000001, 0.00001, 0.0001, 0.001))
@@ -244,7 +246,7 @@ def vgg_A_optim_cifar_24h(rng):
     optim['lr_schedule'] = {
         'name': 'decrease_when_stop_improving',
         'params':{
-            'loss': rng.choice(('train_acc', 'val_acc')),
+            'loss': rng.choice(('train_accuracy', 'val_accuracy')),
             'shrink_factor': rng.choice((2, 5, 10)),
             'patience': rng.choice((10, 15, 20, 30, 40, 50)),
             'min_lr': rng.choice((0.000001, 0.00001, 0.0001, 0.001))
@@ -261,7 +263,7 @@ def vgg_E_optim_cifar_24h(rng):
     optim['lr_schedule'] = {
         'name': 'decrease_when_stop_improving',
         'params':{
-            'loss': rng.choice(('train_acc', 'val_acc')),
+            'loss': rng.choice(('train_accuracy', 'val_accuracy')),
             'shrink_factor': rng.choice((2, 5, 10)),
             'patience': rng.choice((10, 15, 20, 30, 40, 50)),
             'min_lr': rng.choice((0.000001, 0.00001, 0.0001, 0.001))
@@ -332,7 +334,7 @@ def random(rng):
     optim = random_optim(rng)
     model = random_model(rng)
     data = random_data(rng)
-    data['valid_ratio'] = 0.1
+    data['val_ratio'] = 0.1
     optim['budget_secs'] = 3600 * 24
     return {'optim': optim, 'model': model, 'data': data}
 
@@ -366,12 +368,12 @@ def take_bests_on_validation_set_and_use_full_training_data(rng):
     jobs = list(jobs)
     db.close()
 
-    jobs = filter(lambda j:'val_acc' in j['results'], jobs)
-    jobs = sorted(jobs, key=lambda j:(j['results']['val_acc'][-1]), reverse=True)
+    jobs = filter(lambda j:'val_accuracy' in j['results'], jobs)
+    jobs = sorted(jobs, key=lambda j:(j['results']['val_accuracy'][-1]), reverse=True)
 
     j = rng.choice(jobs[0:10])
-    print(j['results']['val_acc'][-1])
-    nb_epochs = 1 + np.argmax(j['results']['val_acc'])
+    print(j['results']['val_accuracy'][-1])
+    nb_epochs = 1 + np.argmax(j['results']['val_accuracy'])
     params = j['content'].copy()
     optim = params['optim']
     optim['nb_epoch'] = nb_epochs
@@ -379,9 +381,9 @@ def take_bests_on_validation_set_and_use_full_training_data(rng):
     optim['early_stopping']['params'] = {}
     optim['checkpoint'] = {'save_best_only': False, 'loss': None}
     if 'loss' in optim['lr_schedule']:
-        optim['lr_schedule']['loss'] = 'train_acc'
+        optim['lr_schedule']['loss'] = 'train_accuracy'
     data = params['data']
-    data['valid_ratio'] = 0
+    data['val_ratio'] = 0
     return params
 
 ##############################################
@@ -418,7 +420,7 @@ def random_data(rng, datasets=('mnist', 'cifar10')):
     return {'shuffle': True,
             'name': rng.choice(datasets),
             'seed': 1,
-            'valid_ratio': None, # meaning use default
+            'val_ratio': None, # meaning use default
             'preprocessing':[
                 { 'name': 'augmentation',
                   'only_train': True,
