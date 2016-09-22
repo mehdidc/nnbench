@@ -11,7 +11,7 @@
         "batch_size": 128, 
         "pred_batch_size": 1024, 
         "regularization":{
-            "l2": 0.0001,
+            "l2": 0,
             "l1": 0
         },
         "lr_schedule": {
@@ -39,8 +39,8 @@
             "pool":                 [0,  0,  1,   0,    0,  1,   0,   0,  1],
             "dropout": 0.5
         }, 
-        "loss": "categorical_crossentropy",
-        "metrics": ["accuracy"]
+        "loss": "mean_squared_error",
+        "metrics": ["mean_squared_error"]
     }, 
     "data": {
         "preprocessing":[

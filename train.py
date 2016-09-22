@@ -148,7 +148,7 @@ def train_model(params, outdir='out'):
         compute_valid_metric[metric] = compute_metric_fn(valid_iterator, test_transformers , metric)
         compute_test_metric[metric]  = compute_metric_fn(test_iterator, test_transformers , metric)
     
-    # compute train and valid accuracy callbacks
+    # compute train and valid metrics callbacks
 
     callbacks.append(Time())
     

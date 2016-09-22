@@ -86,8 +86,8 @@ def compute_metric(model, generator, metric='accuracy'):
 def compute_metric_on(y_pred, y, metric='accuracy'):
     if metric == 'accuracy':
         return (y_pred.argmax(axis=1) == y.argmax(axis=1))
-    elif metric == 'rmse':
-        return y
+    elif metric == 'mean_squared_error':
+        return np.mean(((y_pred - y)**2), axis=1)
     else:
         raise Exception('Unknown metric : {}'.format(metric))
 
