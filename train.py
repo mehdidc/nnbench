@@ -4,6 +4,7 @@ from data import load_data
 from keras import optimizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.preprocessing.image import ImageDataGenerator
+from keras import objectives
 from keras import backend as K
 
 import os
@@ -38,7 +39,6 @@ def train_model(params, outdir='out'):
     valid_ratio = data_params['valid_ratio']
     dataset_name = data_params['name']
 
-
     # optim params
 
     nb_epoch = optim_params['nb_epoch']
@@ -72,6 +72,8 @@ def train_model(params, outdir='out'):
     # model params
     model_name = model_params['name']
     model_params_ = model_params['params']
+    loss_function = model_params['loss']
+    metrics = model_params['metrics']
     
     # PREPARE DATA
 
@@ -97,7 +99,10 @@ def train_model(params, outdir='out'):
         reg = 0
         if l1_coef: reg += l1_coef * sum(K.abs(layer.W).sum() for layer in model.layers if hasattr(layer, 'W'))
         if l2_coef: reg += l2_coef * sum((layer.W**2).sum() for layer in model.layers if hasattr(layer, 'W'))
-        return K.categorical_crossentropy(y_pred, y_true) + reg
+        return get_loss(loss_function)(y_true, y_pred) + reg
+    
+    def get_loss(name):
+        return getattr(objectives, name)
 
     model.compile(loss=loss_fn,
                   optimizer=optimizer)
@@ -134,20 +139,25 @@ def train_model(params, outdir='out'):
     
     ## CALLBACKS
     callbacks = []
-
-    compute_train_accuracy = compute_metric_fn(train_iterator, test_transformers, 'accuracy')
-    compute_valid_accuracy = compute_metric_fn(valid_iterator, test_transformers , 'accuracy')
-    compute_test_accuracy = compute_metric_fn(test_iterator  , test_transformers , 'accuracy')
+    
+    compute_train_metric = {}
+    compute_valid_metric = {}
+    compute_test_metric = {}
+    for metric in metrics:
+        compute_train_metric[metric] = compute_metric_fn(train_iterator, test_transformers , metric)
+        compute_valid_metric[metric] = compute_metric_fn(valid_iterator, test_transformers , metric)
+        compute_test_metric[metric]  = compute_metric_fn(test_iterator, test_transformers , metric)
     
     # compute train and valid accuracy callbacks
 
     callbacks.append(Time())
-
-    callbacks.extend([
-        RecordEachEpoch(name='train_acc', compute_fn=compute_train_accuracy),
-        RecordEachEpoch(name='val_acc', compute_fn=compute_valid_accuracy)
-    ])
-        
+    
+    for metric in metrics:
+        callbacks.extend([
+            RecordEachEpoch(name='train_{}'.format(metric), compute_fn=compute_train_metric[metric]),
+            RecordEachEpoch(name='val_{}'.format(metric), compute_fn=compute_valid_metric[metric])
+        ])
+            
     # Epoch duration time measure callback
     
     # Early stopping callback
@@ -199,9 +209,12 @@ def train_model(params, outdir='out'):
         pass
 
     model.load_weights(model_filename)
-    test_acc = compute_test_accuracy()
-    model.history.final = {'test_acc': test_acc}
-    print('test acc : {}'.format(test_acc))
+   
+    model.history.final = {}
+    for metric in metrics:
+        value = compute_test_metric[metric]()
+        model.history.final['test_' + metric] = value
+        print('test {} : {}'.format(metric, value))
     return model
 
 
