@@ -6,6 +6,54 @@ from keras.utils import np_utils
 from datakit.mnist import MNIST
 from datakit.cifar10 import Cifar10
 
+def load_mnist(random_state=None):
+    data = MNIST('train')
+    data.load()
+    data.X = data.X.reshape((data.X.shape[0], 1, 28, 28))
+    train_X_full = data.X
+    train_y_full = np_utils.to_categorical(data.y)
+    data = MNIST('test')
+    data.load()
+    data.X = data.X.reshape((data.X.shape[0], 1, 28, 28))
+    test_X = data.X
+    test_y = np_utils.to_categorical(data.y)
+    default_validation_size = 10000
+    return train_X_full, train_y_full, test_X, test_y, default_validation_size
+
+def load_cifar(random_state=None):
+    data = Cifar10(train_or_test='train')
+    data.load()
+    data.X = data.X.reshape((data.X.shape[0], 3, 32, 32))
+    train_X_full = data.X / 255.
+    train_y_full = np_utils.to_categorical(data.y)
+    data = Cifar10(train_or_test='test')
+    data.load()
+    data.X = data.X.reshape((data.X.shape[0], 3, 32, 32))
+    test_X = data.X / 255.
+    test_y = np_utils.to_categorical(data.y)
+    default_validation_size = 5000
+    return train_X_full, train_y_full, test_X, test_y, default_validation_size
+
+def load_ilc(random_state=None):
+    dataset = np.load('../ILC/data/data.npz')
+    X = dataset['X']
+    X = X.reshape((X.shape[0], -1))
+    X = X.reshape((X.shape[0], 18, 18, 30))
+    X = X.transpose((0, 3, 1, 2))
+    y = dataset['y']
+
+    rng = np.random.RandomState(random_state)
+    indices = np.arange(len(X))
+    rng.shuffle(indices)
+    X = X[indices]
+    y = y[indices]
+
+    train_X_full = X[0:8000]
+    train_y_full = y[0:8000]
+    test_X = X[8000:]
+    test_y = y[8000:]
+    default_validation_size = 1000
+    return train_X_full, train_y_full, test_X, test_y, default_validation_size
 
 def load_data(name,
               shuffle=True,
@@ -19,29 +67,11 @@ def load_data(name,
 
     info = {}
     if name == 'mnist':
-        data = MNIST('train')
-        data.load()
-        data.X = data.X.reshape((data.X.shape[0], 1, 28, 28))
-        train_X_full = data.X
-        train_y_full = np_utils.to_categorical(data.y)
-        data = MNIST('test')
-        data.load()
-        data.X = data.X.reshape((data.X.shape[0], 1, 28, 28))
-        test_X = data.X
-        test_y = np_utils.to_categorical(data.y)
-        default_validation_size = 10000
+        train_X_full, train_y_full, test_X, test_y, default_validation_size = load_mnist(random_state=random_state)
     elif name == 'cifar10':
-        data = Cifar10(train_or_test='train')
-        data.load()
-        data.X = data.X.reshape((data.X.shape[0], 3, 32, 32))
-        train_X_full = data.X / 255.
-        train_y_full = np_utils.to_categorical(data.y)
-        data = Cifar10(train_or_test='test')
-        data.load()
-        data.X = data.X.reshape((data.X.shape[0], 3, 32, 32))
-        test_X = data.X / 255.
-        test_y = np_utils.to_categorical(data.y)
-        default_validation_size = 5000 
+        train_X_full, train_y_full, test_X, test_y, default_validation_size = load_cifar(random_state=random_state)
+    elif name == 'ilc':
+        train_X_full, train_y_full, test_X, test_y, default_validation_size = load_ilc(random_state=random_state)
     else:
         raise Exception('Unknown dataset : {}'.format(name))
     train_iterator, valid_iterator, test_iterator, info = build_iterators(
@@ -77,10 +107,10 @@ def build_iterators(train_X_full, train_y_full, test_X, test_y,
         valid_y = train_y_full[0:default_validation_size]
 
     # to delete after
-    train_X_flip = train_X[:,:,:,::-1]
-    train_y_flip = train_y
-    train_X = np.concatenate((train_X, train_X_flip),axis=0)
-    train_y = np.concatenate((train_y, train_y_flip),axis=0)
+    #train_X_flip = train_X[:,:,:,::-1]
+    #train_y_flip = train_y
+    #train_X = np.concatenate((train_X, train_X_flip),axis=0)
+    #train_y = np.concatenate((train_y, train_y_flip),axis=0)
 
     print('Shape of training set   : {}'.format(train_X.shape))
     print('Shape of validation set : {}'.format(valid_X.shape))

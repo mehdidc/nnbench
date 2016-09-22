@@ -372,7 +372,6 @@ def take_bests_on_validation_set_and_use_full_training_data(rng):
     jobs = sorted(jobs, key=lambda j:(j['results']['val_accuracy'][-1]), reverse=True)
 
     j = rng.choice(jobs[0:10])
-    print(j['results']['val_accuracy'][-1])
     nb_epochs = 1 + np.argmax(j['results']['val_accuracy'])
     params = j['content'].copy()
     optim = params['optim']
@@ -420,7 +419,7 @@ def random_data(rng, datasets=('mnist', 'cifar10')):
     return {'shuffle': True,
             'name': rng.choice(datasets),
             'seed': 1,
-            'val_ratio': None, # meaning use default
+            'valid_ratio': None, # meaning use default
             'preprocessing':[
                 { 'name': 'augmentation',
                   'only_train': True,

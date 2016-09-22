@@ -9,7 +9,7 @@ def mlp(hp, input_shape=(3, 224, 224), nb_outputs=10):
     for nb in nb_hidden_units:
         x = Dense(nb)(x)
         x = Activation(act)(x)
-    x = Dense(output_dim=nb_outputs, activation="softmax")(x)
+    x = Dense(output_dim=nb_outputs)(x)
     out = x
     model = Model(input=inp, output=out)
     return model

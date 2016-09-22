@@ -39,7 +39,6 @@ def squeezenet(hp, input_shape=(3, 224, 224), nb_outputs=100):
         nb_outputs, 1, 1, init='glorot_uniform',
         border_mode='valid')(x)
     x = GlobalAveragePooling2D()(x)
-    x = Activation('softmax')(x)
     out = x
     return Model(input=inp, output=out)
 
@@ -169,11 +168,8 @@ def squeezenet_specific(input_shape=(3, 224, 224), nb_outputs=100):
         border_mode='valid', name='conv10')(fire9_dropout)
     # The size should match the output of conv10
     avgpool10 = AveragePooling2D((13, 13), name='avgpool10')(conv10)
-
-    flatten = Flatten(name='flatten')(avgpool10)
-    softmax = Activation("softmax", name='softmax')(flatten)
-
-    return Model(input=input_img, output=softmax)
+    out = Flatten(name='flatten')(avgpool10)
+    return Model(input=input_img, output=out)
 
 if __name__ == '__main__':
     from keras.utils.visualize_util import plot

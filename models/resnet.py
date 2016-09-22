@@ -169,7 +169,7 @@ def resnet(hp, input_shape=(3, 224, 224), nb_outputs=10):
         x = _residual_block(block_fn, nb_filters=nb_filters[i], repetations=size_blocks[i], is_first_layer=(i==0), option=option)(x)
     # Classifier block
     x = GlobalAveragePooling2D()(x)
-    x = Dense(output_dim=nb_outputs, init="he_normal", activation="softmax")(x)
+    x = Dense(output_dim=nb_outputs, init="he_normal", activation="linear")(x)
     out = x
     model = Model(input=inp, output=out)
     return model

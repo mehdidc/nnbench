@@ -1,13 +1,12 @@
 {
     "optim": {
-        "loss": "categorical_crossentropy",
-        "metrics": ["accuracy"],
-        "nb_epoch": 50, 
+        "loss": "mean_squared_error",
+        "metrics": ["mean_squared_error"],
+        "nb_epoch": 5, 
         "algo": {
-            "name": "SGD",
+            "name": "RMSprop",
             "params": {
-                "lr": 0.1,
-                "momentum": 0.9
+                "lr": 0.0001
             }
         }, 
         "batch_size": 128, 
@@ -17,7 +16,7 @@
             "l1": 0
         },
         "lr_schedule": {
-            "name": "cifar", 
+            "name": "constant", 
             "params":{
             }
         }, 
@@ -27,27 +26,27 @@
             }
         },
         "checkpoint":{
-            "loss": "val_accuracy",
+            "loss": "val_mean_squared_error",
             "save_best_only": true
         },
         "seed": 42, 
         "budget_secs": 86400
     }, 
     "model": {
-        "name": "mlp",
-        "params": {
-            "nb_hidden_units": [100],
-            "activation": "relu"
-        }, 
-        "loss": "mean_squared_error",
-        "metrics": ["mean_squared_error"]
+        "name": "squeezenet",
+        "params":{
+            "squeeze_filters_size": [16, 16, 32,  32,  48,  48,  64, 64    ],
+            "expand_filters_size":  [64, 64, 128, 128, 192, 192, 256, 256  ],
+            "pool":                 [0,  0,  1,   0,    0,  1,   0,   0,  1],
+            "dropout": 0.5
+        }
     }, 
     "data": {
         "preprocessing":[
         ],
         "seed": 1, 
         "shuffle": true, 
-        "valid_ratio": 0.1,
-        "name": "mnist"
+        "valid_ratio": null,
+        "name": "ilc"
     }
 }

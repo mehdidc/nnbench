@@ -73,7 +73,7 @@ def vgg(hp, input_shape=(3, 227, 227), nb_outputs=10):
         x = get_activation(act)(x)
         if pr > 0:
             x = Dropout(pr)(x)
-    x = Dense(nb_outputs, activation='softmax')(x)
+    x = Dense(nb_outputs, activation='linear')(x)
     out = x
     return Model(inp, out)
 

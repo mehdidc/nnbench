@@ -6,6 +6,8 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.preprocessing.image import ImageDataGenerator
 from keras import objectives
 from keras import backend as K
+from keras.layers import Activation, Input
+from keras.models import Model
 
 import os
 
@@ -92,6 +94,19 @@ def train_model(params, outdir='out'):
         model_params_,
         input_shape=input_shape,
         nb_outputs=nb_outputs)
+
+    print('Number of parameters : {}'.format(model.count_params()))
+    nb = sum(1 for layer in model.layers if hasattr(layer, 'W'))
+    nb_W_params = sum(np.prod(layer.W.get_value().shape) for layer in model.layers if hasattr(layer, 'W'))
+    print('Number of weight parameters : {}'.format(nb_W_params))
+    print('Number of learnable layers : {}'.format(nb))
+
+    # for classification add a softmax nonlinearity
+    if loss_function in ('categorical_crossentropy',):
+        x = Input(shape=model.layers[0].output_shape[1:])
+        y = model(x)
+        y = Activation('softmax')(y)
+        model = Model(input=x, output=y)
 
     optimizer = get_optimizer(algo_name)
     optimizer = optimizer(**algo_params)
@@ -188,12 +203,6 @@ def train_model(params, outdir='out'):
         LiveHistoryEpoch(live_epoch_filename),
         TimeBudget(budget_secs)
     ])
-
-    print('Number of parameters : {}'.format(model.count_params()))
-    nb = sum(1 for layer in model.layers if hasattr(layer, 'W'))
-    nb_W_params = sum(np.prod(layer.W.get_value().shape) for layer in model.layers if hasattr(layer, 'W'))
-    print('Number of weight parameters : {}'.format(nb_W_params))
-    print('Number of learnable layers : {}'.format(nb))
     
     train_flow = train_iterator.flow(repeat=True, batch_size=batch_size)
     train_flow = apply_transformers(train_flow, train_transformers, rng=np.random)
