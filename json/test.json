@@ -2,7 +2,7 @@
     "optim": {
         "loss": "mean_squared_error",
         "metrics": ["mean_squared_error"],
-        "nb_epoch": 5, 
+        "nb_epoch": 1000, 
         "algo": {
             "name": "RMSprop",
             "params": {
@@ -12,14 +12,18 @@
         "batch_size": 128, 
         "pred_batch_size": 1024, 
         "regularization":{
-            "l2": 0,
+            "l2": 0.0001,
             "l1": 0
         },
-        "lr_schedule": {
-            "name": "constant", 
-            "params":{
+        "lr_schedule":{
+            "name": "decrease_when_stop_improving",
+            "params": {
+                "loss": "val_mean_squared_error",
+                "shrink_factor": 2,
+                "patience": 100,
+                "min_lr": 0.00000001
             }
-        }, 
+        },
         "early_stopping":{
             "name": "none",
             "params":{
@@ -33,12 +37,12 @@
         "budget_secs": 86400
     }, 
     "model": {
-        "name": "squeezenet",
-        "params":{
-            "squeeze_filters_size": [16, 16, 32,  32,  48,  48,  64, 64    ],
-            "expand_filters_size":  [64, 64, 128, 128, 192, 192, 256, 256  ],
-            "pool":                 [0,  0,  1,   0,    0,  1,   0,   0,  1],
-            "dropout": 0.5
+        "name": "resnet",
+        "params": {
+            "size_blocks":[2,  2],
+            "nb_filters": [16, 32],
+            "block": "reference",
+            "option": "B"
         }
     }, 
     "data": {
@@ -46,7 +50,7 @@
         ],
         "seed": 1, 
         "shuffle": true, 
-        "valid_ratio": null,
+        "valid_ratio": 0.3,
         "name": "ilc"
     }
 }

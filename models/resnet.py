@@ -19,7 +19,7 @@ from keras.layers.normalization import BatchNormalization
 from keras.utils.visualize_util import plot
 from keras import backend as K
 
-MODE = 0 # BN mode, MODE 2 is 4 time faster than MODE 0
+MODE = 2 # BN mode, MODE 2 is 4 time faster than MODE 0
 
 #Source:https://github.com/fchollet/keras/issues/2608
 def zeropad(x):

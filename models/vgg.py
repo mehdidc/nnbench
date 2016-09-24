@@ -56,11 +56,14 @@ def vgg(hp, input_shape=(3, 227, 227), nb_outputs=10):
     fc_dropout : float
     """
 
+    if type(hp['stride']) != list:stride = [hp['stride']] * len(hp['nb_filters'])
+    else: stride = hp['stride']
+
     act = hp['activation']
     inp, out = vgg_partial_(
         nb_filters=hp['nb_filters'],
         size_filters=[hp['size_filters']] * len(hp['nb_filters']),
-        stride=[hp['stride']] * len(hp['nb_filters']),
+        stride=stride,
         size_blocks=hp['size_blocks'],
         activation=act,
         input_shape=input_shape

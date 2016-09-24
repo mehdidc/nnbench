@@ -24,7 +24,7 @@ default_optim = {
         'params': {
             'loss': 'val_accuracy',
             'shrink_factor': 2,
-            'patience': 10,
+            'patience': 200,
             'min_lr': 0.00001
         }
     },
@@ -431,5 +431,17 @@ def random_data(rng, datasets=('mnist', 'cifar10')):
                     "width_shift_range": 0,
                     'height_shift_range': 0,
                     'zoom_range': 0}}
-            ]
-}
+            ]}
+
+#### TUNING SOME SPECIFIC DATASETS
+
+def model_vgg_1(fc=[100, 100]):
+    return {'name': 'vgg',
+            'params': {
+                'nb_filters': [16, 16, 32, 32, 64, 64],
+                'size_blocks': [3, 3,  3,  3,  3,  3],
+                'stride':      [1, 2,  1,  1,  1,  1],
+                'size_filters': 3,
+                'fc': fc,
+                'fc_dropout': 0.5,
+                'activation': 'relu'}}

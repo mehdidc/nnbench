@@ -6,6 +6,7 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.preprocessing.image import ImageDataGenerator
 from keras import objectives
 from keras import backend as K
+from keras.backend.common import set_epsilon
 from keras.layers import Activation, Input
 from keras.models import Model
 
@@ -27,6 +28,7 @@ from tempfile import NamedTemporaryFile
 import json
 
 def train_model(params, outdir='out'):
+    set_epsilon(0)
     optim_params = params['optim']
     data_params = params['data']
     model_params = params['model']
