@@ -19,7 +19,11 @@ from keras.layers.normalization import BatchNormalization
 from keras.utils.visualize_util import plot
 from keras import backend as K
 
-MODE = 2 # BN mode, MODE 2 is 4 time faster than MODE 0
+from .common import Specs
+
+
+MODE = 0 # BN mode, MODE 2 is 4 time faster than MODE 0
+MOMENTUM = 0.9
 
 #Source:https://github.com/fchollet/keras/issues/2608
 def zeropad(x):
@@ -37,13 +41,13 @@ def _conv_bn_relu(nb_filter, nb_row, nb_col, subsample=(1, 1)):
     def f(input):
         conv = Convolution2D(nb_filter=nb_filter, nb_row=nb_row, nb_col=nb_col, subsample=subsample,
                              init="he_normal", border_mode="same")(input)
-        norm = BatchNormalization(mode=MODE, axis=1)(conv)
+        norm = BatchNormalization(mode=MODE, axis=1, momentum=MOMENTUM)(conv)
         return Activation("relu")(norm)
 
     return f
 
 def _bn_relu(x):
-    x = BatchNormalization(mode=MODE, axis=1)(x)
+    x = BatchNormalization(mode=MODE, axis=1, momentum=MOMENTUM)(x)
     return Activation("relu")(x)
 
 # Helper to build a conv -> BN 
@@ -52,7 +56,7 @@ def _conv_bn(nb_filter, nb_row, nb_col, subsample=(1, 1)):
         conv = Convolution2D(nb_filter=nb_filter, nb_row=nb_row, nb_col=nb_col, subsample=subsample,
                              init="he_normal", border_mode="same")(input)
 
-        norm = BatchNormalization(mode=MODE, axis=1)(conv)
+        norm = BatchNormalization(mode=MODE, axis=1, momentum=MOMENTUM)(conv)
         return norm
 
     return f
@@ -61,7 +65,7 @@ def _conv_bn(nb_filter, nb_row, nb_col, subsample=(1, 1)):
 # This is an improved scheme proposed in http://arxiv.org/pdf/1603.05027v2.pdf
 def _bn_relu_conv(nb_filter, nb_row, nb_col, subsample=(1, 1)):
     def f(input):
-        norm = BatchNormalization(mode=MODE, axis=1)(input)
+        norm = BatchNormalization(mode=MODE, axis=1, momentum=MOMENTUM)(input)
         activation = Activation("relu")(norm)
         return Convolution2D(nb_filter=nb_filter, nb_row=nb_row, nb_col=nb_col, subsample=subsample,
                              init="he_normal", border_mode="same")(activation)
@@ -171,13 +175,13 @@ def resnet(hp, input_shape=(3, 224, 224), nb_outputs=10):
     x = GlobalAveragePooling2D()(x)
     x = Dense(output_dim=nb_outputs, init="he_normal", activation="linear")(x)
     out = x
-    model = Model(input=inp, output=out)
-    return model
+    return Specs(input=inp, output=out)
 
 def main():
     import time
     start = time.time()
-    model = resnet({'nb_filters': [16, 32, 64], 'size_blocks': [5, 5, 5], 'block': 'reference', 'option': 'B'}, input_shape=(3, 32, 32))
+    specs = resnet({'nb_filters': [16, 32, 64], 'size_blocks': [5, 5, 5], 'block': 'reference', 'option': 'B'}, input_shape=(3, 32, 32))
+    model = Model(input=specs.input, output=specs.output)
     print(model.summary())
     nb = sum(1 for layer in model.layers if hasattr(layer, 'W'))
     print('Number of learnable layers : {}'.format(nb))

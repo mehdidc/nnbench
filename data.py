@@ -35,23 +35,17 @@ def load_cifar(random_state=None):
     return train_X_full, train_y_full, test_X, test_y, default_validation_size
 
 def load_ilc(random_state=None):
-    dataset = np.load('../ILC/data/data.npz')
-    X = dataset['X']
-    X = X.reshape((X.shape[0], -1))
-    X = X.reshape((X.shape[0], 18, 18, 30))
-    X = X.transpose((0, 3, 1, 2))
-    y = dataset['y']
-
-    rng = np.random.RandomState(random_state)
-    indices = np.arange(len(X))
-    rng.shuffle(indices)
-    X = X[indices]
-    y = y[indices]
-
-    train_X_full = X[0:8000]
-    train_y_full = y[0:8000]
-    test_X = X[8000:]
-    test_y = y[8000:]
+    def get_X_and_y(dataset):
+        X = dataset['X']
+        X = X.reshape((X.shape[0], -1))
+        X = X.reshape((X.shape[0], 18, 18, 30))
+        X = X.transpose((0, 3, 1, 2))
+        y = dataset['y']
+        return X, y
+    dataset = np.load('../ILC/data/train.npz')
+    train_X_full, train_y_full = get_X_and_y(dataset)
+    dataset = np.load('../ILC/data/test.npz')
+    test_X, test_y = get_X_and_y(dataset)
     default_validation_size = 1000
     return train_X_full, train_y_full, test_X, test_y, default_validation_size
 

@@ -1,6 +1,6 @@
 from keras.layers import * # NOQA
 from keras.models import Model
-
+from .common import Specs
 
 def dense_block_(x, nb_layers, k=12, act='relu', p=0.2, size_filters=3):
     prev = x
@@ -69,5 +69,4 @@ def densenet(hp, input_shape=(3, 227, 227), nb_outputs=10):
     x = GlobalAveragePooling2D()(x)
     x = Dense(nb_outputs, activation='linear')(x)
     out = x
-    return Model(inp, out)
-
+    return Specs(inp=inp, out=out)

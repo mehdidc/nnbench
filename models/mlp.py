@@ -1,5 +1,8 @@
 from keras.layers import *
 from keras.models import Model
+from .common import Specs
+
+
 def mlp(hp, input_shape=(3, 224, 224), nb_outputs=10):
     nb_hidden_units = hp['nb_hidden_units']
     act = hp['activation']
@@ -11,5 +14,4 @@ def mlp(hp, input_shape=(3, 224, 224), nb_outputs=10):
         x = Activation(act)(x)
     x = Dense(output_dim=nb_outputs)(x)
     out = x
-    model = Model(input=inp, output=out)
-    return model
+    return Specs(input=inp, output=out)

@@ -4,6 +4,7 @@ from keras.layers import Input, Activation, merge
 from keras.layers import Flatten, Dropout
 from keras.layers import Convolution2D, MaxPooling2D
 from keras.layers import AveragePooling2D, GlobalAveragePooling2D
+from .common import Specs
 
 def squeezenet(hp, input_shape=(3, 224, 224), nb_outputs=100):
     squeeze_filters_size = hp['squeeze_filters_size']
@@ -40,7 +41,7 @@ def squeezenet(hp, input_shape=(3, 224, 224), nb_outputs=100):
         border_mode='valid')(x)
     x = GlobalAveragePooling2D()(x)
     out = x
-    return Model(input=inp, output=out)
+    return Specs(input=inp, output=out)
 
 
 
@@ -169,11 +170,11 @@ def squeezenet_specific(input_shape=(3, 224, 224), nb_outputs=100):
     # The size should match the output of conv10
     avgpool10 = AveragePooling2D((13, 13), name='avgpool10')(conv10)
     out = Flatten(name='flatten')(avgpool10)
-    return Model(input=input_img, output=out)
+    return Specs(input=input_img, output=out)
 
 if __name__ == '__main__':
     from keras.utils.visualize_util import plot
-    model = squeezenet(
+    specs = squeezenet(
         {
             'squeeze_filters_size': [16, 16, 32,  32,  48,  48,  64, 64    ],
             'expand_filters_size':  [64, 64, 128, 128, 192, 192, 256, 256  ],
@@ -183,6 +184,7 @@ if __name__ == '__main__':
         input_shape=(3, 32, 32),
         nb_outputs=10
     )
+    model = Model(input=specs.input, output=specs.output)
     print(model.summary())
     nb = sum(1 for layer in model.layers if hasattr(layer, 'W'))
     print('Number of learnable layers : {}'.format(nb))

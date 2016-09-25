@@ -88,14 +88,22 @@ def train_model(params, outdir='out'):
         valid_ratio=valid_ratio,
         random_state=data_preparation_random_state)
     
-    # COMPILE MODEL
+    # BUILD AND COMPILE MODEL
     input_shape = info['input_shape']
     nb_outputs = info['nb_outputs']
     model_builder = get_model_builder(model_name)
-    model = model_builder(
+    specs = model_builder(
         model_params_,
         input_shape=input_shape,
         nb_outputs=nb_outputs)
+
+    # for classification add a softmax nonlinearity
+    if loss_function in ('categorical_crossentropy',):
+        inp, out = specs.input, specs.output
+        out = Activation('softmax')(out)
+        model = Model(input=inp, output=out)
+    else:
+        model = Model(input=specs.input, output=specs.output)
 
     print('Number of parameters : {}'.format(model.count_params()))
     nb = sum(1 for layer in model.layers if hasattr(layer, 'W'))
@@ -103,12 +111,6 @@ def train_model(params, outdir='out'):
     print('Number of weight parameters : {}'.format(nb_W_params))
     print('Number of learnable layers : {}'.format(nb))
 
-    # for classification add a softmax nonlinearity
-    if loss_function in ('categorical_crossentropy',):
-        x = Input(shape=model.layers[0].output_shape[1:])
-        y = model(x)
-        y = Activation('softmax')(y)
-        model = Model(input=x, output=y)
 
     optimizer = get_optimizer(algo_name)
     optimizer = optimizer(**algo_params)

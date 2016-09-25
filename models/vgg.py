@@ -1,25 +1,13 @@
 from keras.layers import * # NOQA
 from keras.models import Model
 from keras.layers.advanced_activations import LeakyReLU
+from .common import Specs
 
 def get_activation(act):
     if act == 'leaky_relu':
         return LeakyReLU(alpha=0.3)
     else:
         return Activation(act)
-
-def fc(hp, input_shape=(1, 28, 28), nb_outputs=10):
-    nb_hidden = hp['nb_hidden']
-    act = hp['activation']
-    inp = Input(shape=input_shape)
-    x = Flatten()(inp)
-    for nb_units in nb_hidden:
-        x = Dense(nb_units)(x)
-        x = activation(x)
-        x = get_activation(act)(x)
-    x = Dense(nb_outputs, activation='softmax')(x)
-    out = x
-    return Model(inp, out)
 
 def vgg_partial_(nb_filters=[64, 128, 256, 512, 512],
                  size_filters=[3, 3, 3, 3, 3],
@@ -41,15 +29,13 @@ def vgg_partial_(nb_filters=[64, 128, 256, 512, 512],
             x = get_activation(activation)(x)
         x = MaxPooling2D((stride[i], stride[i]))(x)
     out = x
-    return inp, out
-
-     
+    return inp, out 
 
 def vgg(hp, input_shape=(3, 227, 227), nb_outputs=10):
     """
     nb_filters : list
     size_filters : int
-    stride : int
+    stride : list/int
     size_blocks : list
     activation : str
     fc : list
@@ -78,7 +64,7 @@ def vgg(hp, input_shape=(3, 227, 227), nb_outputs=10):
             x = Dropout(pr)(x)
     x = Dense(nb_outputs, activation='linear')(x)
     out = x
-    return Model(inp, out)
+    return Specs(input=inp, output=out)
 
 if __name__ == '__main__':
     from keras.utils.visualize_util import plot
@@ -91,7 +77,8 @@ if __name__ == '__main__':
         'fc_dropout': 0.5,
         'activation': 'relu'
     }
-    model = vgg(hp, input_shape=(3, 224, 224), nb_outputs=1000)
+    specs = vgg(hp, input_shape=(3, 224, 224), nb_outputs=1000)
+    model = Model(input=specs.input, output=specs.output)
     print(model.summary())
     nb = sum(1 for layer in model.layers if hasattr(layer, 'W'))
     print('Number of learnable layers : {}'.format(nb))
