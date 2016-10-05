@@ -111,7 +111,6 @@ def train_model(params, outdir='out'):
     print('Number of weight parameters : {}'.format(nb_W_params))
     print('Number of learnable layers : {}'.format(nb))
 
-
     optimizer = get_optimizer(algo_name)
     optimizer = optimizer(**algo_params)
 

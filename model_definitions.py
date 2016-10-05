@@ -445,3 +445,10 @@ def model_vgg_1(fc=[100, 100]):
                 'fc': fc,
                 'fc_dropout': 0.5,
                 'activation': 'relu'}}
+def vgg1():
+    optim = deepcopy(torch_blog_optim)
+    optim['budget_secs'] = 24 * 3600
+    fc = [100]
+    model = model_vgg_1(fc=fc)
+    data = random_data(rng, datasets=('ilc',))
+    return {'optim': optim, 'model': model, 'data': data}
