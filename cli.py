@@ -6,7 +6,7 @@ from lightjob.db import AVAILABLE, PENDING, RUNNING, SUCCESS
 
 import numpy as np
 import os
-import json
+import commentjson as json
 
 @click.group()
 def main():

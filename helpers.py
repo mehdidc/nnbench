@@ -6,14 +6,32 @@ from keras.layers.advanced_activations import LeakyReLU
 
 import json
 
+from datakit.helpers import minibatch, expand_dict, dict_apply
+from functools import partial
+from itertools import imap, cycle
 
 def floatX(X):
-    return X.astype('float32')
+    return np.array(X).astype('float32')
 
 def touch(filename):
     open(filename, 'w').close()
 
 class BatchIterator(object):
+
+    def __init__(self, iterator_func):
+        self.iterator_func = iterator_func
+
+    def flow(self, batch_size=128, repeat=True):
+        iterator = self.iterator_func()
+        iterator = minibatch(iterator, batch_size=batch_size)
+        iterator = expand_dict(iterator)
+        iterator = imap(partial(dict_apply, fn=floatX, cols=['X', 'y']), iterator)
+        iterator = imap(lambda data: (data['X'], data['y']), iterator)
+        if repeat:
+            iterator = cycle(iterator)
+        return iterator
+
+class ArrayBatchIterator(object):
 
     def __init__(self, inputs, targets=None,
                  shuffle=False, random_state=None):
@@ -77,17 +95,19 @@ def input_only(gen):
 
 
 def compute_metric(model, generator, metric='accuracy'):
-    preds = []
+    vals = []
+    sizes = []
     for X, y in generator:
-        preds.extend(compute_metric_on(model.predict(X), y, metric))
-    return np.mean(preds)
+        vals.append(compute_metric_on(y, model.predict(X), metric))
+        sizes.append(len(X))
+    return np.dot(vals, sizes) / np.sum(sizes)
 
-
-def compute_metric_on(y_pred, y, metric='accuracy'):
+def compute_metric_on(y, y_pred, metric='accuracy', backend=np):
+    B = backend
     if metric == 'accuracy':
-        return (y_pred.argmax(axis=1) == y.argmax(axis=1))
+        return B.equal(y_pred.argmax(axis=1), y.argmax(axis=1)).mean()
     elif metric == 'mean_squared_error':
-        return np.mean(((y_pred - y)**2), axis=1)
+        return B.mean(((y_pred - y)**2), axis=1)
     else:
         raise Exception('Unknown metric : {}'.format(metric))
 
@@ -102,8 +122,29 @@ class RecordEachEpoch(keras.callbacks.Callback):
         logs[self.name] = self.compute_fn()
         self.values.append(self.name)
 
-eps = 1e-8
+class RecordEachMiniBatch(keras.callbacks.Callback):
 
+    def __init__(self, name, source):
+        self.name = name
+        self.source = source
+        self.epoch_values = []
+        self.epoch_sizes = []
+        self.values = []
+    
+    def on_epoch_begin(self, batch, logs={}):
+        self.epoch_values = []
+        self.epoch_sizes = []
+
+    def on_epoch_end(self, batch, logs={}):
+        val = np.dot(self.epoch_values, self.epoch_sizes) / np.sum(self.epoch_sizes)
+        logs[self.name] = val
+        self.values.append(val)
+
+    def on_batch_end(self, batch, logs={}):
+        self.epoch_values.append(logs[self.source])
+        self.epoch_sizes.append(logs['size'])
+
+eps = 1e-8
 class LearningRateScheduler(keras.callbacks.Callback):
     def __init__(self,
                  name='decrease_when_stop_improving',
@@ -249,3 +290,42 @@ class TimeBudget(keras.callbacks.Callback):
             raise BudgetFinishedException()
 
 leaky_relu = LeakyReLU(0.3)
+
+
+def dispims_color(M, border=0, bordercolor=[0.0, 0.0, 0.0], shape = None, normalize=False):
+    """ Display an array of rgb images. 
+    The input array is assumed to have the shape numimages x numpixelsY x numpixelsX x 3
+    """
+    bordercolor = np.array(bordercolor)[None, None, :]
+    numimages = len(M)
+    M = M.copy()
+
+    if normalize:
+        for i in range(M.shape[0]):
+            M[i] -= M[i].flatten().min()
+            M[i] /= M[i].flatten().max()
+    height, width, three = M[0].shape
+    assert three == 3
+    if shape is None:
+        n0 = np.int(np.ceil(np.sqrt(numimages)))
+        n1 = np.int(np.ceil(np.sqrt(numimages)))
+    else:
+        n0 = shape[0]
+        n1 = shape[1]
+        
+    im = np.array(bordercolor)*np.ones(
+                             ((height+border)*n1+border,(width+border)*n0+border, 1),dtype='<f8')
+    for i in range(n0):
+        for j in range(n1):
+            if i*n1+j < numimages:
+                im[j*(height+border)+border:(j+1)*(height+border)+border,
+                   i*(width+border)+border:(i+1)*(width+border)+border,:] = np.concatenate((
+                  np.concatenate((M[i*n1+j,:,:,:],
+                         bordercolor*np.ones((height,border,3),dtype=float)), 1),
+                  bordercolor*np.ones((border,width+border,3),dtype=float)
+                  ), 0)
+    return im
+
+def named(func, name):
+    func.__name__ = name
+    return func

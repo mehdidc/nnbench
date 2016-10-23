@@ -1,31 +1,36 @@
+import sys
+import os
+import json
+import logging
+import time
+from functools import partial
+
 import numpy as np
 from data import load_data
+from skimage.io import imsave
 
 from keras import optimizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.preprocessing.image import ImageDataGenerator
 from keras import objectives
 from keras import backend as K
 from keras.backend.common import set_epsilon
 from keras.layers import Activation, Input
 from keras.models import Model
 
-import os
-
 import models
 
 from helpers import (
     compute_metric,
-    RecordEachEpoch, LearningRateScheduler,
-    Show,
-    apply_transformers, TimeBudget, BudgetFinishedException,
+    compute_metric_on,
+    RecordEachEpoch, RecordEachMiniBatch,
+    LearningRateScheduler,
+    Show, TimeBudget, BudgetFinishedException,
     LiveHistoryBatch, LiveHistoryEpoch,
     Time,
-    touch)
+    touch, dispims_color, named)
 
-
-from tempfile import NamedTemporaryFile
-import json
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def train_model(params, outdir='out'):
     set_epsilon(0)
@@ -36,13 +41,11 @@ def train_model(params, outdir='out'):
     # RETRIEVE PARAMS
 
     # data params
-
-    preprocessing = data_params['preprocessing']
     data_preparation_random_state = data_params['seed']
     shuffle = data_params['shuffle']
     valid_ratio = data_params['valid_ratio']
     dataset_name = data_params['name']
-
+    data_loader_params = data_params['params']
     # optim params
 
     nb_epoch = optim_params['nb_epoch']
@@ -86,7 +89,8 @@ def train_model(params, outdir='out'):
         dataset_name,
         shuffle=shuffle,
         valid_ratio=valid_ratio,
-        random_state=data_preparation_random_state)
+        random_state=data_preparation_random_state,
+        params=data_loader_params)
     
     # BUILD AND COMPILE MODEL
     input_shape = info['input_shape']
@@ -105,11 +109,11 @@ def train_model(params, outdir='out'):
     else:
         model = Model(input=specs.input, output=specs.output)
 
-    print('Number of parameters : {}'.format(model.count_params()))
+    logger.info('Number of parameters : {}'.format(model.count_params()))
     nb = sum(1 for layer in model.layers if hasattr(layer, 'W'))
     nb_W_params = sum(np.prod(layer.W.get_value().shape) for layer in model.layers if hasattr(layer, 'W'))
-    print('Number of weight parameters : {}'.format(nb_W_params))
-    print('Number of learnable layers : {}'.format(nb))
+    logger.info('Number of weight parameters : {}'.format(nb_W_params))
+    logger.info('Number of learnable layers : {}'.format(nb))
 
     optimizer = get_optimizer(algo_name)
     optimizer = optimizer(**algo_params)
@@ -123,36 +127,28 @@ def train_model(params, outdir='out'):
     def get_loss(name):
         return getattr(objectives, name)
 
+    minibatch_metrics = [named(partial(compute_metric_on, metric=metric, backend=K), name=metric) for metric in metrics] 
     model.compile(loss=loss_fn,
-                  optimizer=optimizer)
-
+                  optimizer=optimizer,
+                  metrics=minibatch_metrics)
     json_string = model.to_json()
     s = json.dumps(json.loads(json_string), indent=4)
     with open(os.path.join(outdir, 'model.json'), 'w') as fd:
         fd.write(s)
 
     # PREPROCESSING
-
-    train_transformers = []
-    test_transformers = []
-    for prep in preprocessing:
-        transformer = build_transformer(prep['name'], prep['params'], inputs=train_iterator.inputs)
-        only_train = prep.get('only_train', False)
-        if only_train:
-            train_transformers.append(transformer)
-        else:
-            train_transformers.append(transformer)
-            test_transformers.append(transformer)
-    
-    def compute_metric_fn(iterator, transformers, metric):
+    def compute_metric_fn(iterator, metric, name=''):
         def fn():
+            logger.debug('Computing {} {}...'.format(metric, name))
+            t = time.time()
             flow = iterator.flow(repeat=False, batch_size=pred_batch_size)
-            flow = apply_transformers(flow, transformers)
             value = compute_metric(
                 model,
                 flow,
                 metric=metric
             )
+            delta_t = time.time() - t
+            logger.debug('Computing {} {} took {:.3f} secs.'.format(metric, name, delta_t))
             return value
         return fn
     
@@ -163,9 +159,9 @@ def train_model(params, outdir='out'):
     compute_valid_metric = {}
     compute_test_metric = {}
     for metric in metrics:
-        compute_train_metric[metric] = compute_metric_fn(train_iterator, test_transformers , metric)
-        compute_valid_metric[metric] = compute_metric_fn(valid_iterator, test_transformers , metric)
-        compute_test_metric[metric]  = compute_metric_fn(test_iterator, test_transformers , metric)
+        compute_train_metric[metric] = compute_metric_fn(train_iterator, metric, name='train')
+        compute_valid_metric[metric] = compute_metric_fn(valid_iterator, metric, name='valid')
+        compute_test_metric[metric]  = compute_metric_fn(test_iterator,  metric, name='test')
     
     # compute train and valid metrics callbacks
 
@@ -173,7 +169,7 @@ def train_model(params, outdir='out'):
     
     for metric in metrics:
         callbacks.extend([
-            RecordEachEpoch(name='train_{}'.format(metric), compute_fn=compute_train_metric[metric]),
+            RecordEachMiniBatch(name='train_{}'.format(metric), source=metric),
             RecordEachEpoch(name='val_{}'.format(metric), compute_fn=compute_valid_metric[metric])
         ])
             
@@ -208,8 +204,13 @@ def train_model(params, outdir='out'):
     ])
     
     train_flow = train_iterator.flow(repeat=True, batch_size=batch_size)
-    train_flow = apply_transformers(train_flow, train_transformers, rng=np.random)
+    x0, y0 = next(train_iterator.flow())
+    logger.debug('Shape of x : {}'.format(x0.shape))
+    logger.debug('Shape of y : {}'.format(y0.shape))
+    logger.debug('Min of x : {}, Max of x : {}'.format(x0.min(), x0.max()))
 
+    img = dispims_color(x0.transpose((0, 2, 3, 1)) * np.ones((1, 1, 1, 3)), border=1, bordercolor=(0.3, 0, 0))
+    imsave(outdir+'/data.png', img)
     try:
         model.fit_generator(
             train_flow,
@@ -220,14 +221,12 @@ def train_model(params, outdir='out'):
             verbose=0)
     except BudgetFinishedException:
         pass
-
     model.load_weights(model_filename)
-   
     model.history.final = {}
     for metric in metrics:
         value = compute_test_metric[metric]()
         model.history.final['test_' + metric] = value
-        print('test {} : {}'.format(metric, value))
+        logger.info('test {} : {}'.format(metric, value))
     return model
 
 
@@ -245,65 +244,6 @@ def get_model_builder(model_name):
     else:
         raise Exception('unknown model : {}'.format(model_name))
 
-def build_transformer(name, params, inputs=None):
-
-    if name == 'augmentation':
-        return build_data_augmentation_transformer(**params)
-    elif name == 'padcrop':
-        return build_padcrop_transformer(**params)
-    elif name == 'standardization':
-        return build_standardization_transformer(inputs=inputs, **params)
-    else:
-        raise Exception('Unknown transformer : {}'.format(name))
-
-def build_standardization_transformer(inputs):
-    st = ImageDataGenerator(
-        featurewise_center=True
-    )
-    st.fit(inputs)
-
-    def fn(X, y, rng):
-        for X_, y_ in st.flow(X, y, batch_size=X.shape[0]):
-            #from skimage.io import imsave
-            #imsave('out.png', X[0].transpose((1, 2, 0)))
-            return X_, y_
-    return fn
-
-
-def build_data_augmentation_transformer(rotation_range=0, 
-                                        shear_range=0, 
-                                        zoom_range=0, 
-                                        horizontal_flip=False, 
-                                        vertical_flip=False,
-                                        width_shift_range=0,
-                                        height_shift_range=0):
-    data_augment = ImageDataGenerator(
-        rotation_range=rotation_range,
-        shear_range=shear_range,
-        zoom_range=zoom_range,
-        horizontal_flip=horizontal_flip,
-        vertical_flip=vertical_flip,
-        width_shift_range=width_shift_range,
-        height_shift_range=height_shift_range)
-    
-    def augment(X, y, rng):
-        for X_, y_ in data_augment.flow(X, y, batch_size=X.shape[0]):
-            return X_, y_
-    return augment
-
-def build_padcrop_transformer(pad=4):
-
-    def padcrop(X, y, rng):
-        batchsize = X.shape[0]
-        h, w = X.shape[2:]
-        padded = np.pad(X,((0,0),(0,0),(pad,pad),(pad,pad)),mode='constant')
-        random_cropped = np.zeros(X.shape, dtype=np.float32)
-        crops = rng.random_integers(0,high=2*pad,size=(batchsize,2))
-        for r in range(batchsize):
-            random_cropped[r,:,:,:] = padded[r,:,crops[r,0]:(crops[r,0]+h),crops[r,1]:(crops[r,1]+w)]
-        X = random_cropped
-        return X, y
-    return padcrop
 
 def build_early_stopping_callbacks(name, params, outdir='out'):
     if name == 'basic':

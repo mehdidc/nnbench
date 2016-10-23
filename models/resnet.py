@@ -16,7 +16,6 @@ from keras.layers.convolutional import (
     AveragePooling2D
 )
 from keras.layers.normalization import BatchNormalization
-from keras.utils.visualize_util import plot
 from keras import backend as K
 
 from .common import Specs
@@ -159,7 +158,6 @@ def resnet(hp, input_shape=(3, 224, 224), nb_outputs=10):
     option = hp['option']
     block_type = {'bottleneck': _bottleneck, 'basic': _basic_block, "reference": _ref_block, "reference_norelu": _refnorelu_block}
     block_fn = block_type[hp['block']]
-
     assert len(size_blocks) == len(nb_filters)
     nb_blocks = len(size_blocks)
 
@@ -179,6 +177,7 @@ def resnet(hp, input_shape=(3, 224, 224), nb_outputs=10):
 
 def main():
     import time
+    from keras.utils.visualize_util import plot
     start = time.time()
     specs = resnet({'nb_filters': [16, 32, 64], 'size_blocks': [5, 5, 5], 'block': 'reference', 'option': 'B'}, input_shape=(3, 32, 32))
     model = Model(input=specs.input, output=specs.output)

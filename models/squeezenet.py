@@ -163,7 +163,7 @@ def squeezenet_specific(input_shape=(3, 224, 224), nb_outputs=100):
     merge9 = merge(
         [fire9_expand1, fire9_expand2], mode='concat', concat_axis=1)
 
-    fire9_dropout = Dropout(0.5, name='fire9_dropout')(merge9)
+    fire9_dropout = Dropout(p, name='fire9_dropout')(merge9)
     conv10 = Convolution2D(
         nb_outputs, 1, 1, init='glorot_uniform',
         border_mode='valid', name='conv10')(fire9_dropout)
