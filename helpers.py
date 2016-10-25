@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 import numpy as np
 import keras
 from keras import backend as K
@@ -100,6 +101,7 @@ def compute_metric(model, generator, metric='accuracy'):
     for X, y in generator:
         vals.append(compute_metric_on(y, model.predict(X), metric))
         sizes.append(len(X))
+    # TODO there is a bug in sizes here
     val = np.dot(vals, sizes) / np.sum(sizes)
     return val
 
@@ -350,3 +352,10 @@ def dispims_color(M, border=0, bordercolor=[0.0, 0.0, 0.0], shape = None, normal
 def named(func, name):
     func.__name__ = name
     return func
+
+def mkdir_path(path):
+    if not os.access(path, os.F_OK):
+        os.makedirs(path)
+
+
+

@@ -7,6 +7,7 @@ from lightjob.db import AVAILABLE, PENDING, RUNNING, SUCCESS
 import numpy as np
 import os
 import commentjson as json
+import importlib
 
 @click.group()
 def main():
@@ -56,14 +57,21 @@ def insert(where, nb):
 
 @click.command()
 @click.option('--from-json', default=None, required=False)
+@click.option('--from-python', default=None, required=False)
 @click.option('--where', default='micro_random', required=False)
 @click.option('--budget-hours', default=None, required=False)
 @click.option('--outdir', default='out', required=False)
-def test(from_json, where, budget_hours, outdir):
+def test(from_json, from_python, where, budget_hours, outdir):
     np.random.seed(42)
     rng = np.random
     if from_json:
         params = json.load(open(from_json))
+    elif from_python:
+        tokens = from_python.split('.')
+        module = '.'.join(tokens[0:-1])
+        func = tokens[-1]
+        module = importlib.import_module(module)
+        params = getattr(module, func)()
     else:
         attr = getattr(model_definitions, where)
         if type(attr) == dict:
@@ -71,8 +79,6 @@ def test(from_json, where, budget_hours, outdir):
         else:
             # assumes it is a function if not dict
             params = attr(rng)
-        #params['optim']['budget_secs'] = budget_hours * 3600 if budget_hours else 60 * 15
-    #print(json.dumps(params, indent=4))
     train_model(params, outdir=outdir)
 
 

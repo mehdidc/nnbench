@@ -9,7 +9,7 @@ import pprint
 import numpy as np
 from data import load_data
 from skimage.io import imsave
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, roc_auc_score
 
 from keras import optimizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint
@@ -28,7 +28,7 @@ from helpers import (
     LearningRateScheduler,
     Show, TimeBudget, BudgetFinishedException,
     LiveHistoryBatch, LiveHistoryEpoch,
-    Time, Report,
+    Time, Report, mkdir_path,
     touch, dispims_color, named)
 
 logging.basicConfig(level=logging.DEBUG)
@@ -39,9 +39,9 @@ def train_model(params, outdir='out'):
     optim_params = params['optim']
     data_params = params['data']
     model_params = params['model']
-    
+    outdir = params.get('outdir', outdir)
+    mkdir_path(outdir) 
     # RETRIEVE PARAMS
-
     # data params
     data_preparation_random_state = data_params['seed']
     shuffle = data_params['shuffle']
@@ -156,6 +156,20 @@ def train_model(params, outdir='out'):
             return value
         return fn
     
+    def compute_auc(iterator):
+        flow = iterator.flow(repeat=False, batch_size=pred_batch_size)
+        preds = []
+        reals = []
+        for X, y in flow:
+            y_pred = model.predict(X)
+            y = y.argmax(axis=1)
+            reals.append(y)
+            preds.append(y_pred)
+        preds = np.concatenate(preds, axis=0)
+        reals = np.concatenate(reals, axis=0)
+        return roc_auc_score(reals, preds)
+
+
     def compute_confusion_matrix(iterator):
         flow = iterator.flow(repeat=False, batch_size=pred_batch_size)
         m = None
@@ -163,7 +177,7 @@ def train_model(params, outdir='out'):
             y_pred = model.predict(X).argmax(axis=1)
             y = y.argmax(axis=1)
             m = (0 if m is None else m) + confusion_matrix(y, y_pred)
-        m = m.astype(np.int32)
+        if m is not None:m = m.astype(np.int32)
         return m
 
     ## CALLBACKS
@@ -188,6 +202,8 @@ def train_model(params, outdir='out'):
     
     callbacks.append(Report(partial(compute_confusion_matrix, train_iterator), name='train_confusion_matrix'))
     callbacks.append(Report(partial(compute_confusion_matrix, valid_iterator), name='valid_confusion_matrix'))
+    #callbacks.append(Report(partial(compute_auc, train_iterator), name='train_auc'))
+    #callbacks.append(Report(partial(compute_auc, valid_iterator), name='valid_auc'))
  
     # Epoch duration time measure callback
     
