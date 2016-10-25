@@ -80,9 +80,17 @@ def load_ilc(random_state=None, params=None):
 def pipeline_load_hdf5(iterator, filename, cols=['X', 'y'], start=0, nb=None):
     filename = os.path.join(os.getenv('DATA_PATH'), filename)
     hf = h5py.File(filename)
+    return iterate(hf, start=start, nb=nb, cols=cols)
+
+def pipeline_load_numpy(iterator, filename, cols=['X', 'y'], start=0, nb=None):
+    filename = os.path.join(os.getenv('DATA_PATH'), filename)
+    data = np.load(filename)
+    return iterate(data, start=start, nb=nb, cols=cols)
+
+def iterate(data, start=0, nb=None, cols=['X', 'y']):
     it = {}
     for c in cols:
-        d = hf[c]
+        d = data[c]
         if nb:
             d = d[start:start+nb]
         else:
@@ -111,6 +119,7 @@ def random_padcrop(X, pad=4, rng=np.random):
     return random_cropped
 
 operators['load_hdf5'] = pipeline_load_hdf5
+operators['load_numpy'] = pipeline_load_numpy
 operators['lambda'] = pipeline_lambda
 operators['random_padcrop'] = apply_to(random_padcrop, cols=['X'])
 operators['random_rotation'] = apply_to(random_rotation, cols=['X'])
@@ -132,7 +141,6 @@ def pipeline_loader(random_state=None, params=None):
     sample = next(loader(params['train']['pipeline']))
     info['input_shape'] = sample['X'].shape
     info['nb_outputs'] = len(sample['y'])
-    print(info)
     return {'train': train, 'valid': valid, 'test': test, 'info': info}
  
 data_loader = {

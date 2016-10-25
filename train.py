@@ -4,10 +4,12 @@ import json
 import logging
 import time
 from functools import partial
+import pprint
 
 import numpy as np
 from data import load_data
 from skimage.io import imsave
+from sklearn.metrics import confusion_matrix
 
 from keras import optimizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint
@@ -26,7 +28,7 @@ from helpers import (
     LearningRateScheduler,
     Show, TimeBudget, BudgetFinishedException,
     LiveHistoryBatch, LiveHistoryEpoch,
-    Time,
+    Time, Report,
     touch, dispims_color, named)
 
 logging.basicConfig(level=logging.DEBUG)
@@ -115,6 +117,8 @@ def train_model(params, outdir='out'):
     logger.info('Number of weight parameters : {}'.format(nb_W_params))
     logger.info('Number of learnable layers : {}'.format(nb))
 
+    model.summary()
+
     optimizer = get_optimizer(algo_name)
     optimizer = optimizer(**algo_params)
 
@@ -152,6 +156,16 @@ def train_model(params, outdir='out'):
             return value
         return fn
     
+    def compute_confusion_matrix(iterator):
+        flow = iterator.flow(repeat=False, batch_size=pred_batch_size)
+        m = None
+        for X, y in flow:
+            y_pred = model.predict(X).argmax(axis=1)
+            y = y.argmax(axis=1)
+            m = (0 if m is None else m) + confusion_matrix(y, y_pred)
+        m = m.astype(np.int32)
+        return m
+
     ## CALLBACKS
     callbacks = []
     
@@ -168,11 +182,13 @@ def train_model(params, outdir='out'):
     callbacks.append(Time())
     
     for metric in metrics:
-        callbacks.extend([
-            RecordEachMiniBatch(name='train_{}'.format(metric), source=metric),
-            RecordEachEpoch(name='val_{}'.format(metric), compute_fn=compute_valid_metric[metric])
-        ])
-            
+        each_minibatch = RecordEachMiniBatch(name='train_{}'.format(metric), source=metric)
+        each_epoch = RecordEachEpoch(name='val_{}'.format(metric), compute_fn=compute_valid_metric[metric])
+        callbacks.extend([each_minibatch, each_epoch])
+    
+    callbacks.append(Report(partial(compute_confusion_matrix, train_iterator), name='train_confusion_matrix'))
+    callbacks.append(Report(partial(compute_confusion_matrix, valid_iterator), name='valid_confusion_matrix'))
+ 
     # Epoch duration time measure callback
     
     # Early stopping callback

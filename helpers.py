@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 import keras
 from keras import backend as K
@@ -93,14 +94,14 @@ def input_only(gen):
             yield x
     return gen_
 
-
 def compute_metric(model, generator, metric='accuracy'):
     vals = []
     sizes = []
     for X, y in generator:
         vals.append(compute_metric_on(y, model.predict(X), metric))
         sizes.append(len(X))
-    return np.dot(vals, sizes) / np.sum(sizes)
+    val = np.dot(vals, sizes) / np.sum(sizes)
+    return val
 
 def compute_metric_on(y, y_pred, metric='accuracy', backend=np):
     B = backend
@@ -113,14 +114,17 @@ def compute_metric_on(y, y_pred, metric='accuracy', backend=np):
 
 class RecordEachEpoch(keras.callbacks.Callback):
 
-    def __init__(self, name, compute_fn):
+    def __init__(self, name, compute_fn, on_logs=True):
         self.name = name
         self.compute_fn = compute_fn
         self.values = []
+        self.on_logs = on_logs
 
     def on_epoch_end(self, batch, logs={}):
-        logs[self.name] = self.compute_fn()
-        self.values.append(self.name)
+        val = self.compute_fn()
+        if self.on_logs:
+            logs[self.name] = val
+        self.values.append(val)
 
 class RecordEachMiniBatch(keras.callbacks.Callback):
 
@@ -136,9 +140,15 @@ class RecordEachMiniBatch(keras.callbacks.Callback):
         self.epoch_sizes = []
 
     def on_epoch_end(self, batch, logs={}):
-        val = np.dot(self.epoch_values, self.epoch_sizes) / np.sum(self.epoch_sizes)
+        vals = self.epoch_values
+        vals = np.array(vals)
+        sizes = self.epoch_sizes
+        sizes = np.array(sizes)
+        sizes = sizes.reshape((sizes.shape[0],) + (1,) * (len(vals.shape) - 1) )
+        val = (vals * sizes).sum() / np.sum(sizes)
         logs[self.name] = val
         self.values.append(val)
+        del logs[self.source]
 
     def on_batch_end(self, batch, logs={}):
         self.epoch_values.append(logs[self.source])
@@ -246,6 +256,17 @@ class Show(keras.callbacks.Callback):
         print('')
 
 
+class Report(keras.callbacks.Callback):
+    
+    def __init__(self, func, name='',print_func=print):
+        self.func = func
+        self.name = name
+        self.print_func = print_func
+
+    def on_epoch_end(self, epoch, logs={}):
+        self.print_func(self.name)
+        self.print_func(self.func())
+
 class LiveHistoryEpoch(keras.callbacks.Callback):
 
     def __init__(self, filename):
@@ -268,7 +289,7 @@ class LiveHistoryBatch(keras.callbacks.Callback):
             fd.write('\n')
 
     def on_batch_end(self, epoch, logs={}):
-        logs = {k: float(v) for k, v in logs.items()}
+        logs = {k: np.array(v).tolist() for k, v in logs.items()}
         with open(self.filename, 'a') as fd:
             fd.write(json.dumps(logs))
             fd.write('\n')
