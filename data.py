@@ -82,9 +82,17 @@ def pipeline_load_hdf5(iterator, filename, cols=['X', 'y'], start=0, nb=None):
     hf = h5py.File(filename)
     return iterate(hf, start=start, nb=nb, cols=cols)
 
-def pipeline_load_numpy(iterator, filename, cols=['X', 'y'], start=0, nb=None):
+def pipeline_load_numpy(iterator, filename, cols=['X', 'y'], start=0, nb=None, shuffle=False, random_state=None):
+    rng = np.random.RandomState(random_state)
     filename = os.path.join(os.getenv('DATA_PATH'), filename)
     data = np.load(filename)
+    if shuffle:
+        indices = np.arange(len(data[cols[0]]))
+        rng.shuffle(indices)
+        data_shuffled = {}
+        for c in cols:
+            data_shuffled[c] = data[c][indices]
+        data = data_shuffled
     return iterate(data, start=start, nb=nb, cols=cols)
 
 def iterate(data, start=0, nb=None, cols=['X', 'y']):

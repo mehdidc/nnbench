@@ -19,7 +19,7 @@ def main():
 @click.option('--where', default='', required=False)
 @click.option('--job_id', default='', required=False)
 @click.option('--budget-hours', default=None, required=False)
-def run(nb, where, job_id, budget_hours):
+def job(nb, where, job_id, budget_hours):
     db = load_db()
     kw = {}
     if where != '':
@@ -61,7 +61,7 @@ def insert(where, nb):
 @click.option('--where', default='micro_random', required=False)
 @click.option('--budget-hours', default=None, required=False)
 @click.option('--outdir', default='out', required=False)
-def test(from_json, from_python, where, budget_hours, outdir):
+def run(from_json, from_python, where, budget_hours, outdir):
     np.random.seed(42)
     rng = np.random
     if from_json:
@@ -101,5 +101,5 @@ def train_and_get_results(params, outdir=None):
 if __name__ == '__main__':
     main.add_command(insert)
     main.add_command(run)
-    main.add_command(test)
+    main.add_command(job)
     main()

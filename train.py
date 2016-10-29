@@ -108,6 +108,10 @@ def train_model(params, outdir='out'):
         inp, out = specs.input, specs.output
         out = Activation('softmax')(out)
         model = Model(input=inp, output=out)
+    elif loss_function in ('multilabel', 'binary_crossentropy'):
+        inp, out = specs.input, specs.output
+        out = Activation('sigmoid')(out)
+        model = Model(input=inp, output=out)
     else:
         model = Model(input=specs.input, output=specs.output)
 
@@ -127,9 +131,6 @@ def train_model(params, outdir='out'):
         if l1_coef: reg += l1_coef * sum(K.abs(layer.W).sum() for layer in model.layers if hasattr(layer, 'W'))
         if l2_coef: reg += l2_coef * sum((layer.W**2).sum() for layer in model.layers if hasattr(layer, 'W'))
         return get_loss(loss_function)(y_true, y_pred) + reg
-    
-    def get_loss(name):
-        return getattr(objectives, name)
 
     minibatch_metrics = [named(partial(compute_metric_on, metric=metric, backend=K), name=metric) for metric in metrics] 
     model.compile(loss=loss_fn,
@@ -155,31 +156,6 @@ def train_model(params, outdir='out'):
             logger.debug('Computing {} {} took {:.3f} secs.'.format(metric, name, delta_t))
             return value
         return fn
-    
-    def compute_auc(iterator):
-        flow = iterator.flow(repeat=False, batch_size=pred_batch_size)
-        preds = []
-        reals = []
-        for X, y in flow:
-            y_pred = model.predict(X)
-            y = y.argmax(axis=1)
-            reals.append(y)
-            preds.append(y_pred)
-        preds = np.concatenate(preds, axis=0)
-        reals = np.concatenate(reals, axis=0)
-        return roc_auc_score(reals, preds)
-
-
-    def compute_confusion_matrix(iterator):
-        flow = iterator.flow(repeat=False, batch_size=pred_batch_size)
-        m = None
-        for X, y in flow:
-            y_pred = model.predict(X).argmax(axis=1)
-            y = y.argmax(axis=1)
-            m = (0 if m is None else m) + confusion_matrix(y, y_pred)
-        if m is not None:m = m.astype(np.int32)
-        return m
-
     ## CALLBACKS
     callbacks = []
     
@@ -191,7 +167,7 @@ def train_model(params, outdir='out'):
         compute_valid_metric[metric] = compute_metric_fn(valid_iterator, metric, name='valid')
         compute_test_metric[metric]  = compute_metric_fn(test_iterator,  metric, name='test')
     
-    # compute train and valid metrics callbacks
+    # compute train and valid metrics/scores callbacks
 
     callbacks.append(Time())
     
@@ -200,10 +176,11 @@ def train_model(params, outdir='out'):
         each_epoch = RecordEachEpoch(name='val_{}'.format(metric), compute_fn=compute_valid_metric[metric])
         callbacks.extend([each_minibatch, each_epoch])
     
-    callbacks.append(Report(partial(compute_confusion_matrix, train_iterator), name='train_confusion_matrix'))
-    callbacks.append(Report(partial(compute_confusion_matrix, valid_iterator), name='valid_confusion_matrix'))
-    #callbacks.append(Report(partial(compute_auc, train_iterator), name='train_auc'))
-    #callbacks.append(Report(partial(compute_auc, valid_iterator), name='valid_auc'))
+    fn = partial(compute_confusion_matrix, iterator=train_iterator, model=model, batch_size=pred_batch_size)
+    callbacks.append(Report(fn, name='train_confusion_matrix'))
+
+    fn = partial(compute_confusion_matrix, iterator=valid_iterator, model=model, batch_size=pred_batch_size)
+    callbacks.append(Report(fn, name='valid_confusion_matrix'))
  
     # Epoch duration time measure callback
     
@@ -261,6 +238,16 @@ def train_model(params, outdir='out'):
         logger.info('test {} : {}'.format(metric, value))
     return model
 
+def multilabel(y_true, y_pred):
+    mask = 1 - 2 * y_true # transform [1 0 0 0] into [-1 1 1 1 1]
+    loss = (mask * K.log(y_pred)) # make the true class prob. bigger, make the others prob. smaller
+    return loss.mean()
+
+def get_loss(name):
+    if name == 'multilabel':
+        return multilabel
+    return getattr(objectives, name)
+
 
 def get_optimizer(name):
     if hasattr(optimizers, name):
@@ -300,3 +287,43 @@ def build_model_checkpoint_callback(params, model_filename='model.pkl'):
 
 def build_lr_schedule_callback(name, params):
     return LearningRateScheduler(name=name, params=params)
+
+def compute_auc(iterator, model, batch_size=128):
+    flow = iterator.flow(repeat=False, batch_size=batch_size)
+    preds = []
+    reals = []
+    for X, y in flow:
+        y_pred = model.predict(X)
+        reals.append(y)
+        preds.append(y_pred)
+    preds = np.concatenate(preds, axis=0)
+    reals = np.concatenate(reals, axis=0)
+    nb_classes = preds.shape[1]
+    nb = 0
+    score = 0
+    for c in range(nb_classes):
+        real_positive = reals[reals.argmax(axis=1) == c, c]
+        if real_positive.sum() == 0: # only existing classes are considered
+            continue
+        real_negative = reals[reals.argmax(axis=1) != c, c]
+        preds_positive = preds[real_positive, c]
+        preds_negative = 1 - preds[real_negative, c]
+        r_all = np.concatenate((real_positive, real_positive), axis=0)
+        p_all = np.concatenate((preds_positive, preds_negative), axis=0)
+        print(r_all.shape, p_all.shape)
+        s = roc_auc_score(r_all, p_all)
+        print(s)
+        score += s 
+        nb += 1
+    score /= nb
+    return score
+
+def compute_confusion_matrix(iterator, model, batch_size=128):
+    flow = iterator.flow(repeat=False, batch_size=batch_size)
+    m = None
+    for X, y in flow:
+        y_pred = model.predict(X).argmax(axis=1)
+        y = y.argmax(axis=1)
+        m = (0 if m is None else m) + confusion_matrix(y, y_pred)
+    if m is not None:m = m.astype(np.int32)
+    return m
