@@ -147,6 +147,7 @@ def pipeline_loader(random_state=None, params=None):
     info['nb_valid_samples'] = params['valid']['nb'] if 'nb' in params['valid'] else len(list(loader(valid_pipeline[0:1])))
     info['nb_test_samples'] = params['test']['nb'] if 'nb' in params['test'] else len(list(loader(test_pipeline[0:1])))
     sample = next(loader(params['train']['pipeline']))
+    print(sample['X'].shape)
     info['input_shape'] = sample['X'].shape
     info['nb_outputs'] = len(sample['y'])
     return {'train': train, 'valid': valid, 'test': test, 'info': info}

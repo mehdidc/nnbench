@@ -4,7 +4,7 @@ import os
 optim = {
     "loss": "categorical_crossentropy",
     "metrics": ["accuracy"],
-    "nb_epoch": 200, 
+    "nb_epoch": 800, 
     "algo": {
         "name": "adam",
         "params": {
@@ -47,7 +47,7 @@ model = {
     }
 }
 
-def get_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=False, random_state=None):
+def get_mnist_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=False):
     data = {
         "name": "loader",
         "params": {
@@ -79,7 +79,7 @@ def get_data(filename, start_train, nb_train, start_valid, nb_valid, start_test,
     }
     return data
 
-def get_base(filename, ratio_valid, ratio_test, outdir, nb_classes=None, shuffle=False, random_state=None):
+def get_base(filename, ratio_valid, ratio_test, outdir, nb_classes=None, get_data=get_mnist_data):
     data = np.load(os.getenv('DATA_PATH') + '/' + filename)
     X = data['X']
     y = data['y']
@@ -103,7 +103,7 @@ def get_base(filename, ratio_valid, ratio_test, outdir, nb_classes=None, shuffle
     base = {
         'optim': optim,
         'model': model,
-        'data': get_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=shuffle),
+        'data': get_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes),
         'outdir': outdir
     }
     return base
@@ -173,4 +173,91 @@ def mnist_classifier_multilabel():
     return params
 
 def hwrt():
-    return get_base('hwrt/data.npz', ratio_valid, ratio_test, 'out/feature_generation/hwrt', shuffle=True, random_state=42)
+    params = get_base('hwrt/data.npz', ratio_valid, ratio_test, 'out/feature_generation/hwrt', shuffle=True, random_state=42)
+    model = {
+        "name": "lenet",
+        "params": {
+            "nb_filters": [64, 128, 256],
+            "dropout": 0,
+            "fc_dropout": 0,
+            "batch_norm": True,
+            "fc": [256, 256],
+            "size_filters": 3,
+            "activation": "prelu"
+        }
+    }
+    params['model'] = model
+    return params
+
+
+def get_fonts_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=False, random_state=None):
+    data = {
+        "name": "loader",
+        "params": {
+            "train":{
+                "pipeline":[
+                    {"name": "load_numpy", "params": {"filename": filename, "start":start_train, "nb": nb_train, "shuffle": shuffle, "random_state": random_state}},
+                    {"name": "order", "params": {"order": "tf"}},
+                    {"name": "resize", "params": {"shape": [28, 28]}},
+                    {"name": "order", "params": {"order": "th"}},
+                    {"name": "divide_by", "params": {"value": 255}},
+                    {"name": "invert", "params": {}},
+                    {"name": "onehot", "params": {"nb_classes": nb_classes}}
+                ]
+            },
+            "valid":{
+                "pipeline":[
+                    {"name": "load_numpy", "params": {"filename": filename, "start": start_valid, "nb": nb_valid, "shuffle": shuffle, "random_state": random_state}},
+                    {"name": "order", "params": {"order": "tf"}},
+                    {"name": "resize", "params": {"shape": [28, 28]}},
+                    {"name": "order", "params": {"order": "th"}},
+                    {"name": "divide_by", "params": {"value": 255}},
+                    {"name": "invert", "params": {}},
+                    {"name": "onehot", "params": {"nb_classes": nb_classes}}
+                ]
+            },
+            "test":{
+                "pipeline": [
+                    {"name": "load_numpy", "params": {"filename": filename, "start": start_test, "nb": nb_test, "shuffle": shuffle, "random_state": random_state}},
+                    {"name": "order", "params": {"order": "tf"}},
+                    {"name": "resize", "params": {"shape": [28, 28]}},
+                    {"name": "order", "params": {"order": "th"}},
+                    {"name": "divide_by", "params": {"value": 255}},
+                    {"name": "invert", "params": {}},
+                    {"name": "onehot", "params": {"nb_classes": nb_classes}}
+                ]
+            }
+        },
+        "seed": 1, 
+        "shuffle": None, 
+        "valid_ratio": None
+    }
+    return data
+
+
+def fonts():
+    params = get_base('fonts/fonts.npz', ratio_valid, ratio_test, 'out/feature_generation/fonts', get_data=get_fonts_data)
+    model = {
+        "name": "lenet",
+        "params": {
+            "nb_filters": [64, 128, 256],
+            "dropout": 0.2,
+            "fc_dropout": 0.5,
+            "batch_norm": False,
+            "fc": [256, 256],
+            "size_filters": 3,
+            "activation": "prelu"
+        }
+    }
+
+    model = {
+        "params": {
+            "size_blocks":[5,  5,  5],
+            "nb_filters": [16, 32, 64],
+            "block": "basic",
+            "option": "B"
+        }, 
+        "name": "resnet"
+    }
+    params['model'] = model
+    return params

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 import os
 import json
@@ -125,6 +126,11 @@ def train_model(params, outdir='out'):
 
     optimizer = get_optimizer(algo_name)
     optimizer = optimizer(**algo_params)
+    
+    def print_fn(s):
+        print(s)
+        with open(os.path.join(outdir, 'stdout'), 'a') as fd:
+            print(s, file=fd)
 
     def loss_fn(y_true, y_pred):
         reg = 0
@@ -134,8 +140,8 @@ def train_model(params, outdir='out'):
 
     minibatch_metrics = [named(partial(compute_metric_on, metric=metric, backend=K), name=metric) for metric in metrics] 
     model.compile(loss=loss_fn,
-                  optimizer=optimizer,
-                  metrics=minibatch_metrics)
+                  optimizer=optimizer)
+                  #metrics=minibatch_metrics)
     json_string = model.to_json()
     s = json.dumps(json.loads(json_string), indent=4)
     with open(os.path.join(outdir, 'model.json'), 'w') as fd:
@@ -172,15 +178,18 @@ def train_model(params, outdir='out'):
     callbacks.append(Time())
     
     for metric in metrics:
-        each_minibatch = RecordEachMiniBatch(name='train_{}'.format(metric), source=metric)
-        each_epoch = RecordEachEpoch(name='val_{}'.format(metric), compute_fn=compute_valid_metric[metric])
-        callbacks.extend([each_minibatch, each_epoch])
+        #each_minibatch = RecordEachMiniBatch(name='train_{}'.format(metric), source=metric)
+        each_epoch_train = RecordEachEpoch(name='train_{}'.format(metric), compute_fn=compute_train_metric[metric])
+        each_epoch_val = RecordEachEpoch(name='val_{}'.format(metric), compute_fn=compute_valid_metric[metric])
+        callbacks.extend([each_epoch_train, each_epoch_val])
     
     fn = partial(compute_confusion_matrix, iterator=train_iterator, model=model, batch_size=pred_batch_size)
-    callbacks.append(Report(fn, name='train_confusion_matrix'))
+    if model.output_shape[1] <= 20:
+        callbacks.append(Report(fn, name='train_confusion_matrix', print=print_fn))
 
     fn = partial(compute_confusion_matrix, iterator=valid_iterator, model=model, batch_size=pred_batch_size)
-    callbacks.append(Report(fn, name='valid_confusion_matrix'))
+    if model.output_shape[1] <= 20:
+        callbacks.append(Report(fn, name='valid_confusion_matrix', print=print_fn))
  
     # Epoch duration time measure callback
     
@@ -197,7 +206,7 @@ def train_model(params, outdir='out'):
     
     # lr schedule callback
     callbacks.append(
-        build_lr_schedule_callback(name=lr_schedule_name, params=lr_schedule_params)
+        build_lr_schedule_callback(name=lr_schedule_name, params=lr_schedule_params, print=print_fn)
     )
     # the rest of callbacks
     live_epoch_filename = os.path.join(outdir, 'epoch')
@@ -206,7 +215,7 @@ def train_model(params, outdir='out'):
     touch(live_batch_filename)
 
     callbacks.extend([
-        Show(),
+        Show(print=print_fn),
         LiveHistoryBatch(live_batch_filename),
         LiveHistoryEpoch(live_epoch_filename),
         TimeBudget(budget_secs)
@@ -285,8 +294,8 @@ def build_model_checkpoint_callback(params, model_filename='model.pkl'):
                            save_best_only=save_best_only,
                            mode='auto' if loss else 'min')
 
-def build_lr_schedule_callback(name, params):
-    return LearningRateScheduler(name=name, params=params)
+def build_lr_schedule_callback(name, params, print=print):
+    return LearningRateScheduler(name=name, params=params, print=print)
 
 def compute_auc(iterator, model, batch_size=128):
     flow = iterator.flow(repeat=False, batch_size=batch_size)
@@ -324,6 +333,6 @@ def compute_confusion_matrix(iterator, model, batch_size=128):
     for X, y in flow:
         y_pred = model.predict(X).argmax(axis=1)
         y = y.argmax(axis=1)
-        m = (0 if m is None else m) + confusion_matrix(y, y_pred)
+        m = (0 if m is None else m) + confusion_matrix(y, y_pred, labels=np.arange(model.output_shape[1]))
     if m is not None:m = m.astype(np.int32)
     return m

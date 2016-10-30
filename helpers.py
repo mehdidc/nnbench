@@ -96,13 +96,14 @@ def input_only(gen):
     return gen_
 
 def compute_metric(model, generator, metric='accuracy'):
-    vals = []
-    sizes = []
+    preds = []
+    reals = []
     for X, y in generator:
-        vals.append(compute_metric_on(y, model.predict(X), metric))
-        sizes.append(len(X))
-    # TODO there is a bug in sizes here
-    val = np.dot(vals, sizes) / np.sum(sizes)
+        reals.append(y)
+        preds.append(model.predict(X))
+    reals = np.concatenate(reals, axis=0)
+    preds = np.concatenate(preds, axis=0)
+    val = compute_metric_on(reals, preds, metric=metric)
     return val
 
 def compute_metric_on(y, y_pred, metric='accuracy', backend=np):
@@ -110,7 +111,7 @@ def compute_metric_on(y, y_pred, metric='accuracy', backend=np):
     if metric == 'accuracy':
         return B.equal(y_pred.argmax(axis=1), y.argmax(axis=1)).mean()
     elif metric == 'mean_squared_error':
-        return B.mean(((y_pred - y)**2), axis=1)
+        return B.mean(((y_pred - y)**2), axis=1).mean()
     else:
         raise Exception('Unknown metric : {}'.format(metric))
 
@@ -160,12 +161,14 @@ eps = 1e-8
 class LearningRateScheduler(keras.callbacks.Callback):
     def __init__(self,
                  name='decrease_when_stop_improving',
-                 params=None):
+                 params=None,
+                 print=print):
         super(LearningRateScheduler, self).__init__()
         if params is None:
             params = {}
         self.name = name
         self.schedule_params = params
+        self.print = print
     
     def on_epoch_end(self, epoch, logs={}):
         assert hasattr(self.model.optimizer, 'lr'), \
@@ -198,7 +201,7 @@ class LearningRateScheduler(keras.callbacks.Callback):
                 best_value = hist[loss][best_index]
                 if ( best(value_epoch, best_value) == best_value and
                      epoch - best_index + 1 >= patience):
-                    print('shrinking learning rate, loss : {},'
+                    self.print('shrinking learning rate, loss : {},'
                           'prev best epoch : {}, prev best value : {},'
                           'current value: {}'.format(loss,
                                                      best_index + 1, best_value,
@@ -235,7 +238,7 @@ class LearningRateScheduler(keras.callbacks.Callback):
         min_lr = params.get('min_lr', 0)
         new_lr = max(new_lr, min_lr)
         if abs(new_lr - old_lr) > eps:
-            print('prev learning rate : {}, '
+            self.print('prev learning rate : {}, '
                   'new learning rate : {}'.format(old_lr, new_lr))
         K.set_value(self.model.optimizer.lr, new_lr)
         logs['lr'] = new_lr
@@ -250,24 +253,27 @@ class Time(keras.callbacks.Callback):
 
 
 class Show(keras.callbacks.Callback):
+    
+    def __init__(self, print):
+        self.print = print
 
     def on_epoch_end(self, epoch, logs={}):
-        print('')
+        self.print('')
         for k, v in logs.items():
-            print('{}:{:.5f}'.format(k, v))
-        print('')
+            self.print('{}:{:.5f}'.format(k, v))
+        self.print('')
 
 
 class Report(keras.callbacks.Callback):
     
-    def __init__(self, func, name='',print_func=print):
+    def __init__(self, func, name='', print=print):
         self.func = func
         self.name = name
-        self.print_func = print_func
+        self.print = print
 
     def on_epoch_end(self, epoch, logs={}):
-        self.print_func(self.name)
-        self.print_func(self.func())
+        self.print(self.name)
+        self.print(self.func())
 
 class LiveHistoryEpoch(keras.callbacks.Callback):
 
@@ -356,6 +362,3 @@ def named(func, name):
 def mkdir_path(path):
     if not os.access(path, os.F_OK):
         os.makedirs(path)
-
-
-
