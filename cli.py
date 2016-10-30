@@ -42,45 +42,37 @@ def job(nb, where, job_id, budget_hours):
         train_and_save(db, job)
         db.modify_state_of(job["summary"], SUCCESS)
 
-
 @click.command()
 @click.option('--where', default='random', required=False)
 @click.option('--nb', default=1, required=False)
 def insert(where, nb):
     db = load_db()
-    params_generator = getattr(model_definitions, where)
+    params_generator = params_sampler_from_python(where)
     for i in range(nb):
-        params = params_generator(np.random)
+        params = params_generator()
         print(params)
         db.safe_add_job(params, where=where)
-
 
 @click.command()
 @click.option('--from-json', default=None, required=False)
 @click.option('--from-python', default=None, required=False)
-@click.option('--where', default='micro_random', required=False)
 @click.option('--budget-hours', default=None, required=False)
 @click.option('--outdir', default='out', required=False)
-def run(from_json, from_python, where, budget_hours, outdir):
+def run(from_json, from_python, budget_hours, outdir):
     np.random.seed(42)
     rng = np.random
     if from_json:
         params = json.load(open(from_json))
     elif from_python:
-        tokens = from_python.split('.')
-        module = '.'.join(tokens[0:-1])
-        func = tokens[-1]
-        module = importlib.import_module(module)
-        params = getattr(module, func)()
-    else:
-        attr = getattr(model_definitions, where)
-        if type(attr) == dict:
-            params = attr
-        else:
-            # assumes it is a function if not dict
-            params = attr(rng)
+        params = param_sampler_from_python(from_python)()
     train_model(params, outdir=outdir)
 
+def param_sampler_from_python(label):
+    tokens = label.split('.')
+    module = '.'.join(tokens[0:-1])
+    func = tokens[-1]
+    module = importlib.import_module(module)
+    return getattr(module, func)
 
 def train_and_save(db, job, outdir=None):
     if outdir is None:
@@ -90,13 +82,11 @@ def train_and_save(db, job, outdir=None):
     output = train_and_get_results(job['content'], outdir=outdir)
     db.update({'results': output}, job['summary'])
 
-
 def train_and_get_results(params, outdir=None):
     model = train_model(params, outdir=outdir)
     output = model.history.history.copy()
     output.update(model.history.final)
     return output
-
 
 if __name__ == '__main__':
     main.add_command(insert)

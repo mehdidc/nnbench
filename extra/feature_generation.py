@@ -47,7 +47,17 @@ model = {
     }
 }
 
-def get_mnist_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=False):
+resnet = {
+    "params": {
+        "size_blocks":[5,  5,  5],
+        "nb_filters": [16, 32, 64],
+        "block": "basic",
+        "option": "B"
+    }, 
+    "name": "resnet"
+}
+
+def get_data_base(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=False, random_state=None):
     data = {
         "name": "loader",
         "params": {
@@ -79,7 +89,7 @@ def get_mnist_data(filename, start_train, nb_train, start_valid, nb_valid, start
     }
     return data
 
-def get_base(filename, ratio_valid, ratio_test, outdir, nb_classes=None, get_data=get_mnist_data):
+def get_base(filename, ratio_valid, ratio_test, outdir, nb_classes=None, get_data=get_data_base, **kw):
     data = np.load(os.getenv('DATA_PATH') + '/' + filename)
     X = data['X']
     y = data['y']
@@ -103,7 +113,7 @@ def get_base(filename, ratio_valid, ratio_test, outdir, nb_classes=None, get_dat
     base = {
         'optim': optim,
         'model': model,
-        'data': get_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes),
+        'data': get_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, **kw),
         'outdir': outdir
     }
     return base
@@ -165,6 +175,7 @@ def mnist_classifier_v2():
     outdir = 'out/feature_generation/mnist_classifier_v2'
     params['outdir'] = outdir
     return params
+
 def mnist_classifier_multilabel():
     params = mnist_classifier()
     outdir = 'out/feature_generation/mnist_classifier_multilabel'
@@ -174,23 +185,20 @@ def mnist_classifier_multilabel():
 
 def hwrt():
     params = get_base('hwrt/data.npz', ratio_valid, ratio_test, 'out/feature_generation/hwrt', shuffle=True, random_state=42)
-    model = {
-        "name": "lenet",
-        "params": {
-            "nb_filters": [64, 128, 256],
-            "dropout": 0,
-            "fc_dropout": 0,
-            "batch_norm": True,
-            "fc": [256, 256],
-            "size_filters": 3,
-            "activation": "prelu"
-        }
-    }
-    params['model'] = model
+    params['model'] = resnet
     return params
 
+def hwrt10():
+    params = get_base('hwrt/data_10classes.npz', ratio_valid, ratio_test, 'out/feature_generation/hwrt10', shuffle=True, random_state=42)
+    params['model'] = resnet
+    return params
 
-def get_fonts_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=False, random_state=None):
+def hwrt30():
+    params = get_base('hwrt/data_30classes.npz', ratio_valid, ratio_test, 'out/feature_generation/hwrt30', shuffle=True, random_state=42)
+    params['model'] = resnet
+    return params
+
+def get_fonts_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=False, ):
     data = {
         "name": "loader",
         "params": {
@@ -234,30 +242,7 @@ def get_fonts_data(filename, start_train, nb_train, start_valid, nb_valid, start
     }
     return data
 
-
 def fonts():
     params = get_base('fonts/fonts.npz', ratio_valid, ratio_test, 'out/feature_generation/fonts', get_data=get_fonts_data)
-    model = {
-        "name": "lenet",
-        "params": {
-            "nb_filters": [64, 128, 256],
-            "dropout": 0.2,
-            "fc_dropout": 0.5,
-            "batch_norm": False,
-            "fc": [256, 256],
-            "size_filters": 3,
-            "activation": "prelu"
-        }
-    }
-
-    model = {
-        "params": {
-            "size_blocks":[5,  5,  5],
-            "nb_filters": [16, 32, 64],
-            "block": "basic",
-            "option": "B"
-        }, 
-        "name": "resnet"
-    }
-    params['model'] = model
+    params['model'] = resnet
     return params
