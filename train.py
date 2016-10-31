@@ -126,7 +126,7 @@ def train_model(params, outdir='out'):
 
     optimizer = get_optimizer(algo_name)
     optimizer = optimizer(**algo_params)
-    
+    touch(os.path.join(outdir, 'stdout'))
     def print_fn(s):
         print(s)
         with open(os.path.join(outdir, 'stdout'), 'a') as fd:
@@ -244,7 +244,7 @@ def train_model(params, outdir='out'):
     for metric in metrics:
         value = compute_test_metric[metric]()
         model.history.final['test_' + metric] = value
-        logger.info('test {} : {}'.format(metric, value))
+        print_fn('test {} : {}'.format(metric, value))
     return model
 
 def multilabel(y_true, y_pred):

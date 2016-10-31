@@ -11,6 +11,7 @@ from keras.preprocessing.image import random_rotation, random_shift, random_shea
 from datakit.image import operators, pipeline_load, apply_to
 from datakit import mnist, cifar
 from datakit.helpers import dict_apply
+from itertools import islice
 
 import h5py
 import os
@@ -77,10 +78,21 @@ def load_ilc(random_state=None, params=None):
     )
     return {'train': train_iterator, 'valid': valid_iterator, 'test': test_iterator, 'info': info}
 
-def pipeline_load_hdf5(iterator, filename, cols=['X', 'y'], start=0, nb=None):
+def pipeline_load_hdf5(iterator, filename, cols=['X', 'y'], start=0, nb=None, batch_size=128):
     filename = os.path.join(os.getenv('DATA_PATH'), filename)
     hf = h5py.File(filename)
-    return iterate(hf, start=start, nb=nb, cols=cols)
+        
+    def iter_func():
+        for i in xrange(start, start + nb, batch_size):
+            d = {}
+            for c in cols:
+                d[c] = hf[c][i:i+batch_size]
+            for n in range(len(d[cols[0]])):
+                p = {}
+                for c in cols:
+                    p[c] = d[c][n]
+                yield p
+    return iter_func()
 
 def pipeline_load_numpy(iterator, filename, cols=['X', 'y'], start=0, nb=None, shuffle=False, random_state=None):
     rng = np.random.RandomState(random_state)

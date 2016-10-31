@@ -4,7 +4,7 @@ import os
 optim = {
     "loss": "categorical_crossentropy",
     "metrics": ["accuracy"],
-    "nb_epoch": 800, 
+    "nb_epoch": 400, 
     "algo": {
         "name": "adam",
         "params": {
@@ -57,6 +57,15 @@ resnet = {
     "name": "resnet"
 }
 
+resnet2 = {
+    "params": {
+        "size_blocks":[8,  6,  4],
+        "nb_filters": [16, 32, 64],
+        "block": "basic",
+        "option": "B"
+    }, 
+    "name": "resnet"
+}
 def get_data_base(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=False, random_state=None):
     data = {
         "name": "loader",
@@ -122,6 +131,11 @@ ratio_valid = 0.1
 ratio_test = 0.2
 def all_vs_fake_jobset75():
     return get_base('feature_generation/datasets/all_vs_fake_jobset75.npz', ratio_valid, ratio_test, 'out/feature_generation/all_vs_fake_jobset75')
+
+def all_vs_fake_jobset83():
+    params = get_base('feature_generation/datasets/all_vs_fake_jobset83.npz', ratio_valid, ratio_test, 'out/feature_generation/all_vs_fake_jobset83')
+    params['optim']['loss'] = 'binary_crossentropy'
+    return params
 
 def _5_vs_fake_jobset75():
     return get_base('feature_generation/datasets/5_vs_fake_jobset75.npz', ratio_valid, ratio_test, 'out/feature_generation/5_vs_fake_jobset75')
@@ -198,6 +212,12 @@ def hwrt30():
     params['model'] = resnet
     return params
 
+def hwrt50():
+    params = get_base('hwrt/data_50classes.npz', ratio_valid, ratio_test, 'out/feature_generation/hwrt50', shuffle=True, random_state=42)
+    params['model'] = resnet2
+    return params
+
+
 def get_fonts_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=False, ):
     data = {
         "name": "loader",
@@ -246,3 +266,49 @@ def fonts():
     params = get_base('fonts/fonts.npz', ratio_valid, ratio_test, 'out/feature_generation/fonts', get_data=get_fonts_data)
     params['model'] = resnet
     return params
+
+def get_big_fonts_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=False, ):
+    data = {
+        "name": "loader",
+        "params": {
+            "train":{
+                "pipeline":[
+                    {"name": "load_numpy", "params": {"filename": filename, "start":start_train, "nb": nb_train, "shuffle": shuffle, "random_state": random_state}},
+                    {"name": "order", "params": {"order": "tf"}},
+                    {"name": "resize", "params": {"shape": [28, 28]}},
+                    {"name": "order", "params": {"order": "th"}},
+                    {"name": "divide_by", "params": {"value": 255}},
+                    {"name": "invert", "params": {}},
+                    {"name": "onehot", "params": {"nb_classes": nb_classes}}
+                ]
+            },
+            "valid":{
+                "pipeline":[
+                    {"name": "load_numpy", "params": {"filename": filename, "start": start_valid, "nb": nb_valid, "shuffle": shuffle, "random_state": random_state}},
+                    {"name": "order", "params": {"order": "tf"}},
+                    {"name": "resize", "params": {"shape": [28, 28]}},
+                    {"name": "order", "params": {"order": "th"}},
+                    {"name": "divide_by", "params": {"value": 255}},
+                    {"name": "invert", "params": {}},
+                    {"name": "onehot", "params": {"nb_classes": nb_classes}}
+                ]
+            },
+            "test":{
+                "pipeline": [
+                    {"name": "load_numpy", "params": {"filename": filename, "start": start_test, "nb": nb_test, "shuffle": shuffle, "random_state": random_state}},
+                    {"name": "order", "params": {"order": "tf"}},
+                    {"name": "resize", "params": {"shape": [28, 28]}},
+                    {"name": "order", "params": {"order": "th"}},
+                    {"name": "divide_by", "params": {"value": 255}},
+                    {"name": "invert", "params": {}},
+                    {"name": "onehot", "params": {"nb_classes": nb_classes}}
+                ]
+            }
+        },
+        "seed": 1, 
+        "shuffle": None, 
+        "valid_ratio": None
+    }
+    return data
+
+
