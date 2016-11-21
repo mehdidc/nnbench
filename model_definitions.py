@@ -5,18 +5,100 @@ import numpy as np
 # Defaults
 ##############################################
 
+mnist_data = {
+    "name": "loader",
+    "params": {
+        "train":{
+            "pipeline":[
+                {"name": "dataset", "params": {"name": "mnist", "which": "train"}},
+                {"name": "shuffle", "params": {"random_state": 2}},
+                {"name": "offset", "params": {"start": 0, "nb": 50000}},
+                {"name": "divide_by", "params": {"value": 255}},
+                {"name": "onehot", "params": {"nb_classes": 10}}
+            ]
+        },
+        "valid":{
+            "pipeline":[
+                {"name": "dataset", "params": {"name": "mnist", "which": "train"}},
+                {"name": "shuffle", "params": {"random_state": 2}},
+                {"name": "offset", "params": {"start": 50000, "nb": 10000}},
+                {"name": "divide_by", "params": {"value": 255}},
+                {"name": "onehot", "params": {"nb_classes": 10}}
+            ]
+        },
+        "test":{
+            "pipeline": [
+                {"name": "dataset", "params": {"name": "mnist", "which": "test"}},
+                {"name": "shuffle", "params": {"random_state": 2}},
+                {"name": "divide_by", "params": {"value": 255}},
+                {"name": "onehot", "params": {"nb_classes": 10}}
+            ]
+        }
+    },
+    "seed": 1, 
+    "shuffle": True, 
+    "valid_ratio": None
+}
+
+cifar10_data = {
+    "name": "loader",
+    "params": {
+        "train":{
+            "pipeline":[
+                {"name": "dataset", "params": {"name": "cifar", "which": "train"}},
+                {"name": "shuffle", "params": {"random_state": 2}},
+                {"name": "offset", "params": {"start": 0, "nb": 50000}},
+                {"name": "divide_by", "params": {"value": 255}},
+                {"name": "onehot", "params": {"nb_classes": 10}}
+            ]
+        },
+        "valid":{
+            "pipeline":[
+                {"name": "dataset", "params": {"name": "cifar", "which": "train"}},
+                {"name": "shuffle", "params": {"random_state": 2}},
+                {"name": "offset", "params": {"start": 50000, "nb": 10000}},
+                {"name": "divide_by", "params": {"value": 255}},
+                {"name": "onehot", "params": {"nb_classes": 10}}
+            ]
+        },
+        "test":{
+            "pipeline": [
+                {"name": "dataset", "params": {"name": "cifar", "which": "test"}},
+                {"name": "shuffle", "params": {"random_state": 2}},
+                {"name": "divide_by", "params": {"value": 255}},
+                {"name": "onehot", "params": {"nb_classes": 10}}
+            ]
+        }
+    },
+    "seed": 1, 
+    "shuffle": True, 
+    "valid_ratio": None
+}
+
+cifar10_data_2 = {
+    "name": "cifar10",
+    "params": {
+    },
+    "seed": 1, 
+    "shuffle": True, 
+    "valid_ratio": None
+}
+
+
 default_optim = {
-    "nb_epoch": 1000,
     "loss": "categorical_crossentropy",
     "metrics": ["accuracy"],
+    "nb_epoch": 200, 
     "algo": {
-        "name": "SGD",
-        "params": {"lr": 0.01, "momentum": 0.95}
-    },
-    "batch_size": 128,
-    "pred_batch_size": 1000,
+        "name": "adam",
+        "params": {
+            "lr": 1e-3
+        }
+    }, 
+    "batch_size": 128, 
+    "pred_batch_size": 1024, 
     "regularization":{
-        "l2": 0,
+        "l2": 0.,
         "l1": 0
     },
     "lr_schedule":{
@@ -24,29 +106,29 @@ default_optim = {
         "params": {
             "loss": "val_accuracy",
             "shrink_factor": 2,
-            "patience": 200,
+            "patience": 30,
             "min_lr": 0.00001
         }
     },
     "early_stopping":{
-        "name": "basic",
-        "params": {
-            "patience": 1000,
-            "patience_loss": "val_accuracy"
+        "name": "none",
+        "params":{
         }
     },
     "checkpoint":{
         "loss": "val_accuracy",
         "save_best_only": True
     },
-    "seed": 42,
-    "budget_secs": "inf"
+    "seed": 42, 
+    "budget_secs": 86400
 }
 
 ok_optim = deepcopy(default_optim)
+ok_optim["algo"]["name"] = "SGD"
 ok_optim["algo"]["params"] = {"nesterov": True, "lr": 0.0005, "momentum": 0.99}
 
 torch_blog_optim = deepcopy(default_optim)
+torch_blog_optim["algo"]["name"] = "SGD"
 torch_blog_optim["algo"]["params"] = {"nesterov": True, "lr": 1., "momentum": 0.9}
 torch_blog_optim["lr_schedule"] = {
     "name": "decrease_every",
@@ -56,40 +138,26 @@ torch_blog_optim["lr_schedule"] = {
     }
 }
 
-
 small_test_cnn = {
     "model": {
-        "name": "vgg",
+        "name": "lenet",
         "params": {
-            "nb_filters": [64, 64],
-            "size_blocks": [2, 2],
-            "size_filters": 3,
-            "stride": 2,
-            "fc": [500],
+            "nb_filters": [32, 64, 128],
+            "dropout": 0.5,
             "fc_dropout": 0.5,
-            "activation": "relu",
+            "batch_norm": False,
+            "fc": [512, 256, 128],
+            "size_filters": 3,
+            "activation": "prelu"
         }
     },
     "optim": default_optim,
     "data": {
-        "preprocessing":[
-            {"name": "augmentation",
-             "only_train": True,
-             "params": {
-                "horizontal_flip": True,
-                "vertical_flip": False,
-                "shear_range": 0,
-                "rotation_range": 0,
-                "zoom_range": 0,
-                "width_shift_range": 0,
-                "height_shift_range": 0
-             }
-           }
-        ],
+        "name": "cifar10",
+        "params": {},
         "seed": 1,
         "shuffle": True,
-        "val_ratio": None, # meaning use default
-        "name": "mnist",
+        "valid_ratio": None, # meaning use default
     }
 }
 
@@ -116,7 +184,6 @@ def model_vgg_A(fc=[4096, 4096]):
                 "fc": fc,
                 "fc_dropout": 0.5,
                 "activation": "relu"}}
-
 
 def model_vgg_B():
     return {"name": "vgg",
@@ -180,7 +247,8 @@ def random_model_vgg(rng):
             "activation": random_activation(rng)}}
 
 
-def vgg_D_optim_cifar(rng):
+def vgg_D_optim_cifar(random_state=None):
+    rng = np.random.RandomState(random_state)
     optim = random_optim(rng)
     fc = 512
     model = model_vgg_D(fc=[fc, fc])
@@ -188,7 +256,8 @@ def vgg_D_optim_cifar(rng):
     return {"optim": optim, "model": model, "data": data}
 
 
-def vgg_D_optim_cifar_24h(rng):
+def vgg_D_optim_cifar_24h(random_state=None):
+    rng = np.random.RandomState(random_state)
     optim = random_optim(rng)
     optim["budget_secs"] = 24 * 3600
     fc = 512
@@ -197,7 +266,8 @@ def vgg_D_optim_cifar_24h(rng):
     return {"optim": optim, "model": model, "data": data}
 
 
-def vgg_D_optim_cifar_24h_no_valid(rng):
+def vgg_D_optim_cifar_24h_no_valid(random_state=None):
+    rng = np.random.RandomState(random_state)
     optim = deepcopy(ok_optim)
     optim["early_stopping"]["params"]["patience_loss"] = "train_accuracy"
     optim["lr_schedule"]["params"]["loss"] = "train_accuracy"
@@ -209,7 +279,8 @@ def vgg_D_optim_cifar_24h_no_valid(rng):
     return {"optim": optim, "model": model, "data": data}
 
 
-def vgg_D_optim_cifar_schedule_24h(rng):
+def vgg_D_optim_cifar_schedule_24h(random_state=None):
+    rng = np.random.RandomState(random_state)
     optim = deepcopy(ok_optim)
     optim["lr_schedule"] = {
         "name": "decrease_when_stop_improving",
@@ -227,7 +298,8 @@ def vgg_D_optim_cifar_schedule_24h(rng):
     return {"optim": optim, "model": model, "data": data}
 
 
-def vgg_D_optim_cifar_torch_blog_24h(rng):
+def vgg_D_optim_cifar_torch_blog_24h(random_state=None):
+    rng = np.random.RandomState(random_state)
     optim = deepcopy(torch_blog_optim)
     optim["algo"]["params"] = { 
           "nesterov": bool(rng.choice((True, False))),
@@ -241,7 +313,8 @@ def vgg_D_optim_cifar_torch_blog_24h(rng):
     return {"optim": optim, "model": model, "data": data}
 
 
-def vgg_A_optim_cifar_24h(rng):
+def vgg_A_optim_cifar_24h(random_state=None):
+    rng = np.random.RandomState(random_state)
     optim = deepcopy(ok_optim)
     optim["lr_schedule"] = {
         "name": "decrease_when_stop_improving",
@@ -258,7 +331,8 @@ def vgg_A_optim_cifar_24h(rng):
     data = random_data(rng, datasets=("cifar10",))
     return {"optim": optim, "model": model, "data": data}
 
-def vgg_E_optim_cifar_24h(rng):
+def vgg_E_optim_cifar_24h(random_state=None):
+    rng = np.random.RandomState(random_state)
     optim = deepcopy(ok_optim)
     optim["lr_schedule"] = {
         "name": "decrease_when_stop_improving",
@@ -296,7 +370,8 @@ def default_densenet_model(rng):
         }
     }
 
-def default_densenet(rng):
+def default_densenet(random_state=None):
+    rng = np.random.RandomState(random_state)
     optim = deepcopy(ok_optim)
     optim["budget_secs"] = 24 * 3600
     model = default_densenet_model(rng)
@@ -318,7 +393,8 @@ def default_squeezenet_model(rng):
                 "dropout": 0.5
             }}
 
-def default_squeezenet(rng):
+def default_squeezenet(random_state=None):
+    rng = np.random.RandomState(random_state)
     optim = deepcopy(ok_optim)
     optim["budget_secs"] = 24 * 3600
     model = default_squeezenet_model(rng)
@@ -330,16 +406,18 @@ def default_squeezenet(rng):
 # Random ones
 ##############################################
 
-def random(rng):
+def random(random_state=None):
+    rng = np.random.RandomState(random_state)
     optim = random_optim(rng)
     model = random_model(rng)
     data = random_data(rng)
     data["val_ratio"] = 0.1
-    optim["budget_secs"] = 3600 * 24
+    optim["budget_secs"] = 3600 * 4
     return {"optim": optim, "model": model, "data": data}
 
 
-def mini_random(rng):
+def mini_random(random_state=None):
+    rng = np.random.RandomState(random_state)
     optim = random_optim(rng)
     model = random_model(rng)
     data = random_data(rng)
@@ -347,7 +425,8 @@ def mini_random(rng):
     return {"optim": optim, "model": model, "data": data}
 
 
-def micro_random(rng):
+def micro_random(random_state=None):
+    rng = np.random.RandomState(random_state)
     optim = random_optim(rng)
     model = random_model(rng)
     data = random_data(rng, datasets=("cifar10",))
@@ -360,7 +439,8 @@ def micro_random(rng):
 ##############################################
 
 
-def take_bests_on_validation_set_and_use_full_training_data(rng):
+def take_bests_on_validation_set_and_use_full_training_data(random_state=None):
+    rng = np.random.RandomState(random_state)
     from lightjob.cli import load_db
     from lightjob.db import SUCCESS
     db = load_db()
@@ -416,23 +496,8 @@ def random_optim(rng, extended=False):
 
 
 def random_data(rng, datasets=("mnist", "cifar10")):
-    return {"shuffle": True,
-            "name": rng.choice(datasets),
-            "seed": 1,
-            "valid_ratio": None, # meaning use default
-            "preprocessing":[
-                { "name": "augmentation",
-                  "only_train": True,
-                  "params":  {
-                    "horizontal_flip": True,
-                    "vertical_flip": False,
-                    "shear_range": 0,
-                    "rotation_range": 0,
-                    "width_shift_range": 0,
-                    "height_shift_range": 0,
-                    "zoom_range": 0}}
-            ]}
-
+    ds = rng.choice(datasets)
+    return cifar10_data_2
 #### TUNING SOME SPECIFIC DATASETS
 
 def model_vgg_1(fc=[100, 100]):
@@ -445,7 +510,8 @@ def model_vgg_1(fc=[100, 100]):
                 "fc": fc,
                 "fc_dropout": 0.5,
                 "activation": "relu"}}
-def vgg1():
+def vgg1(random_state=None):
+    rng = np.random.RandomState(random_state)
     optim = deepcopy(torch_blog_optim)
     optim["budget_secs"] = 24 * 3600
     fc = [100]

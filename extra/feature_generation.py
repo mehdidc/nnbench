@@ -217,8 +217,18 @@ def hwrt50():
     params['model'] = resnet2
     return params
 
+def fonts_and_digits():
+    params = get_base('fonts/fonts_and_digits.npz', ratio_valid, ratio_test, 'out/feature_generation/fonts_and_digits', shuffle=True)
+    return params
 
-def get_fonts_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=False, ):
+def fonts_and_digits_multilabel():
+    params = get_base('fonts/fonts_and_digits.npz', ratio_valid, ratio_test, 'out/feature_generation/fonts_and_digits', shuffle=True)
+    outdir = 'out/feature_generation/fonts_and_digits_multilabel'
+    params['outdir'] = outdir
+    params['optim']['loss'] = 'binary_crossentropy'
+    return params
+
+def get_fonts_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=False, random_state=42):
     data = {
         "name": "loader",
         "params": {
@@ -265,6 +275,16 @@ def get_fonts_data(filename, start_train, nb_train, start_valid, nb_valid, start
 def fonts():
     params = get_base('fonts/fonts.npz', ratio_valid, ratio_test, 'out/feature_generation/fonts', get_data=get_fonts_data)
     params['model'] = resnet
+    return params
+
+def fonts2():
+    params = get_base('fonts/fonts.npz', ratio_valid, ratio_test, 'out/feature_generation/fonts2', get_data=get_fonts_data)
+    return params
+
+def fonts_multilabel():
+    params = get_base('fonts/fonts.npz', ratio_valid, ratio_test, 'out/feature_generation/fonts_multilabel', get_data=get_fonts_data)
+    params['model'] = resnet
+    params['optim']['loss'] = 'binary_crossentropy'
     return params
 
 def get_big_fonts_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=False, ):

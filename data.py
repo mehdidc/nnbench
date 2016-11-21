@@ -20,7 +20,7 @@ def load_mnist(random_state=None, params=None):
     data = mnist.load()
     train_X_full = data['train']['X'] / 255.
     train_y_full = np_utils.to_categorical(data['train']['y'])
-    test_X = data['test']['x'] / 255.
+    test_X = data['test']['X'] / 255.
     test_y = np_utils.to_categorical(data['test']['y'])
     default_validation_size = 10000
     train_iterator, valid_iterator, test_iterator, info = build_iterators(

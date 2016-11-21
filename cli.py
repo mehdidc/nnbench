@@ -64,7 +64,8 @@ def run(from_json, from_python, budget_hours, outdir):
     if from_json:
         params = json.load(open(from_json))
     elif from_python:
-        params = param_sampler_from_python(from_python)()
+        sampler = param_sampler_from_python(from_python)
+        params = sampler()
     train_model(params, outdir=outdir)
 
 def param_sampler_from_python(label):
