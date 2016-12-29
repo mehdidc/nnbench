@@ -112,6 +112,14 @@ def compute_metric_on(y, y_pred, metric='accuracy', backend=np):
         return B.equal(y_pred.argmax(axis=1), y.argmax(axis=1)).mean()
     elif metric == 'mean_squared_error':
         return B.mean(((y_pred - y)**2), axis=1).mean()
+    elif metric == 'binary_crossentropy':
+        eps = 1e-5
+        y_pred = B.clip(y_pred, eps, 1.0 - eps)
+        return -(y * B.log(y_pred) + (1 - y) * B.log(1 - y_pred)).mean()
+    elif metric == 'multilabel_accuracy':
+        th = 0.5
+        y_pred = (y_pred > th)
+        return B.equal(y_pred, y).mean()
     else:
         raise Exception('Unknown metric : {}'.format(metric))
 

@@ -102,7 +102,7 @@ def get_base(filename, ratio_valid, ratio_test, outdir, nb_classes=None, get_dat
     data = np.load(os.getenv('DATA_PATH') + '/' + filename)
     X = data['X']
     y = data['y']
-    if nb_classes is None:
+    if nb_classes is None and len(y.shape)==1:
         nb_classes = len(set(y))
     nb_examples = X.shape[0]
     print('Nb of examples : {}, Nb of classes : {}'.format(nb_examples, nb_classes))
@@ -219,6 +219,13 @@ def hwrt50():
 
 def fonts_and_digits():
     params = get_base('fonts/fonts_and_digits.npz', ratio_valid, ratio_test, 'out/feature_generation/fonts_and_digits', shuffle=True)
+    return params
+
+def sketchy():
+    params = get_base('sketchy/data_n.npz', ratio_valid, ratio_test, 'out/feature_generation/sketchy', shuffle=True)
+    params['model'] = resnet
+    params['optim']['batch_size'] = 32
+    params['optim']['pred_batch_size'] = 32
     return params
 
 def fonts_and_digits_multilabel():
