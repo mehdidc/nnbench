@@ -8,7 +8,8 @@ def mlp(hp, input_shape=(3, 224, 224), nb_outputs=10):
     act = hp['activation']
     inp = Input(input_shape)
     x = inp
-    x = Flatten()(x)
+    if len(input_shape) > 1:
+        x = Flatten()(x)
     for nb in nb_hidden_units:
         x = Dense(nb)(x)
         x = Activation(act)(x)

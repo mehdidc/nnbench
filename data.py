@@ -36,7 +36,7 @@ def load_mnist(random_state=None, params=None):
     return {'train': train_iterator, 'valid': valid_iterator, 'test': test_iterator, 'info': info}
 
 def load_cifar(random_state=None, params=None):
-    data = cifar.load()
+    data = cifar.load(coarse_label=True)
     train_X_full = data['train']['X'] / 255.
     train_y_full = np_utils.to_categorical(data['train']['y'])
     test_X = data['test']['X'] / 255.

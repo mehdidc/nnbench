@@ -33,7 +33,7 @@ optim = {
         }
     },
     "checkpoint":{
-        "loss": "binary_crossentropy",
+        "loss": "val_binary_crossentropy",
         "save_best_only": True
     },
     "seed": 42, 
@@ -44,6 +44,7 @@ optim = {
 def get_data(filename, start_train, nb_train, start_valid, nb_valid, start_test, nb_test, nb_classes, shuffle=False, random_state=42):
     #nb_train = 100
     #nb_valid = 100
+    print(start_train, nb_train)
     data = {
         "name": "loader",
         "params": {
@@ -72,7 +73,7 @@ def get_data(filename, start_train, nb_train, start_valid, nb_valid, start_test,
     }
     return data
 
-def celeba_resnet():
+def clf_resnet():
     params = get_base('celeba/train.npz', ratio_valid, ratio_test, 'out/celeba/resnet', get_data=get_data)
     params['optim']= optim
     params['model'] = resnet

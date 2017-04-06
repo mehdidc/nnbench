@@ -141,7 +141,6 @@ def train_model(params, outdir='out'):
     minibatch_metrics = [named(partial(compute_metric_on, metric=metric, backend=K), name=metric) for metric in metrics] 
     model.compile(loss=loss_fn,
                   optimizer=optimizer)
-                  #metrics=minibatch_metrics)
     json_string = model.to_json()
     s = json.dumps(json.loads(json_string), indent=4)
     with open(os.path.join(outdir, 'model.json'), 'w') as fd:
@@ -199,7 +198,7 @@ def train_model(params, outdir='out'):
      )
 
     # Checkpoint callback
-    model_filename = os.path.join(outdir, 'model.pkl')
+    model_filename = os.path.join(outdir, 'model.h5')
     callbacks.append(
         build_model_checkpoint_callback(model_filename=model_filename, params=checkpoint)
     )
@@ -222,13 +221,14 @@ def train_model(params, outdir='out'):
     ])
     
     train_flow = train_iterator.flow(repeat=True, batch_size=batch_size)
-    x0, y0 = next(train_iterator.flow())
+    x0, y0 = next(train_iterator.flow(batch_size=batch_size))
     logger.debug('Shape of x : {}'.format(x0.shape))
     logger.debug('Shape of y : {}'.format(y0.shape))
     logger.debug('Min of x : {}, Max of x : {}'.format(x0.min(), x0.max()))
-
-    img = dispims_color(x0.transpose((0, 2, 3, 1)) * np.ones((1, 1, 1, 3)), border=1, bordercolor=(0.3, 0, 0))
-    imsave(outdir+'/data.png', img)
+    
+    if len(x0.shape) == 4:
+        img = dispims_color(x0.transpose((0, 2, 3, 1)) * np.ones((1, 1, 1, 3)), border=1, bordercolor=(0.3, 0, 0))
+        imsave(outdir+'/data.png', img)
     try:
         model.fit_generator(
             train_flow,
@@ -285,7 +285,7 @@ def build_early_stopping_callbacks(name, params, outdir='out'):
     elif name == 'none':
         return []
 
-def build_model_checkpoint_callback(params, model_filename='model.pkl'):
+def build_model_checkpoint_callback(params, model_filename='model.h5'):
     loss = params['loss']
     save_best_only = params['save_best_only']
     return ModelCheckpoint(model_filename, 
