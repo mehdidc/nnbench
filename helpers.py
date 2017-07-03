@@ -10,7 +10,7 @@ import json
 
 from datakit.helpers import minibatch, expand_dict, dict_apply
 from functools import partial
-from itertools import imap, cycle
+from itertools import cycle
 
 def floatX(X):
     return np.array(X).astype('float32')
@@ -27,8 +27,8 @@ class BatchIterator(object):
         iterator = self.iterator_func()
         iterator = minibatch(iterator, batch_size=batch_size)
         iterator = expand_dict(iterator)
-        iterator = imap(partial(dict_apply, fn=floatX, cols=['X', 'y']), iterator)
-        iterator = imap(lambda data: (data['X'], data['y']), iterator)
+        iterator = map(partial(dict_apply, fn=floatX, cols=['X', 'y']), iterator)
+        iterator = map(lambda data: (data['X'], data['y']), iterator)
         if repeat:
             iterator = cycle(iterator)
         return iterator

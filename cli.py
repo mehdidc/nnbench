@@ -1,12 +1,14 @@
 import click
-from train import train_model
-import model_definitions
+
 from lightjob.cli import load_db
 from lightjob.db import AVAILABLE, PENDING, RUNNING, SUCCESS
 
+from train import train_model
+import model_definitions
+
 import numpy as np
 import os
-import commentjson as json
+import json
 import importlib
 
 @click.group()

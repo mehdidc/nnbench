@@ -1,4 +1,4 @@
-from itertools import cycle, imap
+from itertools import cycle
 from functools import partial
 
 from helpers import floatX
@@ -126,7 +126,7 @@ def iterate(data, start=0, nb=None, cols=['X', 'y']):
 
 def pipeline_lambda(iterator, code, cols=['X']):
     fn = eval(code)
-    iterator = imap(partial(dict_apply, fn=fn, cols=cols), iterator)
+    iterator = map(partial(dict_apply, fn=fn, cols=cols), iterator)
     return iterator
 
 def random_padcrop(X, pad=4, rng=np.random):
