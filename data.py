@@ -83,7 +83,7 @@ def pipeline_load_hdf5(iterator, filename, cols=['X', 'y'], start=0, nb=None, ba
     hf = h5py.File(filename)
         
     def iter_func():
-        for i in xrange(start, start + nb, batch_size):
+        for i in range(start, start + nb, batch_size):
             d = {}
             for c in cols:
                 d[c] = hf[c][i:i+batch_size]

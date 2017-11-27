@@ -57,6 +57,7 @@
              }
            }
         ],
+        "params":{},
         "loader": [],
         "seed": 1, 
         "shuffle": true, 

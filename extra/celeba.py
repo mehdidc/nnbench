@@ -1,7 +1,7 @@
-from feature_generation import optim
-from feature_generation import model
-from feature_generation import resnet
-from feature_generation import get_base
+from .feature_generation import optim
+from .feature_generation import model
+from .feature_generation import resnet
+from .feature_generation import get_base
 
 ratio_valid = 0.1
 ratio_test = 0.2
